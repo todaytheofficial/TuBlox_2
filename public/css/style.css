@@ -1,0 +1,326 @@
+/* --- ШРИФТЫ --- */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Quicksand:wght@600;700&display=swap');
+
+/* --- ПЕРЕМЕННЫЕ (НОВАЯ ПАЛИТРА) --- */
+:root {
+    --bg-dark: #14141c;
+    --card-bg: #1f1f29;
+    --input-bg: #2a2a35;
+    --primary: #6c5ce7;
+    --primary-dark: #5649c0;
+    --accent: #00cec9;
+    --danger: #ff7675;
+    --text-main: #dfe6e9;
+    --text-muted: #b2bec3;
+    
+    --font-head: 'Fredoka', sans-serif;
+    --font-body: 'Quicksand', sans-serif;
+    
+    --radius-l: 24px;
+    --radius-m: 16px;
+    --radius-s: 12px;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-body);
+    margin: 0;
+    overflow-x: hidden;
+    /* Фоновый узор */
+    background-image: radial-gradient(#2c2c3a 1px, transparent 1px);
+    background-size: 30px 30px;
+}
+
+/* --- КНОПКИ (ОБЪЕМНЫЕ) --- */
+button {
+    font-family: var(--font-head);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s;
+    outline: none;
+}
+button:active { transform: scale(0.95) translateY(2px); }
+
+/* Основная кнопка (Фиолетовая) */
+.btn-primary {
+    background: linear-gradient(180deg, #8475ff 0%, #6c5ce7 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--radius-m);
+    font-size: 16px;
+    box-shadow: 0 5px 0 var(--primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 100%; /* Для форм */
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+}
+.btn-primary:active { box-shadow: 0 2px 0 var(--primary-dark); }
+.btn-primary:hover { filter: brightness(1.1); }
+
+/* Кнопка магазина (Внутри карточек) */
+.btn-shop {
+    width: 100%; padding: 8px;
+    background: #2d3436; color: white;
+    border-radius: var(--radius-s);
+    font-size: 14px;
+    box-shadow: 0 4px 0 #000;
+}
+.btn-shop:hover { background: #353b48; }
+.btn-shop:active { box-shadow: 0 2px 0 #000; transform: translateY(2px); }
+
+/* Кнопка-иконка (Квадратная) */
+.btn-icon {
+    background: #2d3436;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 0 #000;
+    border: none;
+}
+.btn-icon:hover { background: #353b48; border-color: transparent; }
+.btn-icon:active { box-shadow: 0 2px 0 #000; }
+.btn-icon svg { width: 24px; height: 24px; stroke: white; stroke-width: 2.5; stroke-linecap: round; fill: none; }
+
+/* --- HEADER --- */
+header {
+    background: rgba(31, 31, 41, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 15px 5%;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 2px solid #2d3436;
+    position: sticky; top: 0; z-index: 50;
+}
+.header-right { display: flex; gap: 15px; align-items: center; }
+
+.logo {
+    font-family: var(--font-head);
+    font-size: 28px;
+    background: linear-gradient(45deg, #a29bfe, #00cec9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.5));
+}
+
+/* Профиль в хедере */
+.profile-pill {
+    background: #2d3436;
+    padding: 5px 15px 5px 5px;
+    border-radius: 30px;
+    display: flex; align-items: center; gap: 10px;
+    border: 2px solid #3d3d3d;
+    cursor: pointer;
+    transition: 0.2s;
+    user-select: none;
+}
+.profile-pill:hover { border-color: var(--primary); transform: scale(1.02); }
+.mini-avatar-svg {
+    width: 32px; height: 32px;
+    background: #000;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid white;
+}
+.profile-pill span { font-family: var(--font-head); font-weight: 700; color: white; }
+
+/* --- AUTH PAGES (LOGIN/REGISTER) --- */
+.auth-body {
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh;
+    background: radial-gradient(circle at center, #2a1a4a 0%, var(--bg-dark) 100%);
+}
+.auth-card {
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: var(--radius-l);
+    width: 320px; text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    border: 3px solid #2d3436;
+    position: relative;
+    overflow: hidden;
+}
+.auth-card::before {
+    content: ''; position: absolute; top:0; left:0; width:100%; height: 6px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.input-group {
+    display: flex; align-items: center;
+    background: var(--input-bg);
+    border-radius: var(--radius-s);
+    margin-bottom: 15px; padding: 0 15px;
+    border: 2px solid transparent;
+    transition: 0.2s;
+}
+.input-group:focus-within { border-color: var(--primary); }
+.input-group svg { width: 20px; height: 20px; stroke: var(--text-muted); }
+.input-group input {
+    background: none; border: none; color: white;
+    width: 100%; padding: 14px 10px; outline: none;
+    font-family: var(--font-body); font-weight: 600; font-size: 15px;
+}
+.color-select { 
+    display: flex; justify-content: space-between; align-items: center; 
+    margin-bottom: 20px; font-weight: 700; background: var(--input-bg);
+    padding: 10px; border-radius: var(--radius-s);
+}
+.auth-link { 
+    display: block; margin-top: 20px; 
+    color: var(--accent); text-decoration: none; font-weight: 700; 
+}
+.auth-link:hover { text-decoration: underline; }
+
+/* --- DASHBOARD & GRIDS --- */
+main { max-width: 1200px; margin: 0 auto; }
+h2, h3 { font-family: var(--font-head); color: white; margin-bottom: 15px; }
+
+.grid, .shop-grid {
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px; padding: 20px;
+}
+
+/* Карточки Игр и Предметов */
+.card, .shop-card, .item-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    border: 3px solid #2d3436;
+    transition: 0.2s;
+    position: relative;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    display: flex; flex-direction: column;
+}
+.card:hover, .shop-card:hover, .item-card:hover { 
+    transform: translateY(-8px); 
+    border-color: var(--primary); 
+}
+
+/* Специфика карточки игры */
+.card-img-placeholder {
+    height: 140px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    display: flex; align-items: center; justify-content: center;
+}
+.card-content { padding: 20px; }
+.card h4 { margin: 0; font-size: 22px; color: white; font-family: var(--font-head); }
+.card-meta {
+    margin-top: 10px; display: flex; gap: 15px;
+    font-size: 14px; font-weight: 700; color: var(--text-muted);
+}
+
+/* Специфика карточки магазина/инвентаря */
+.shop-card, .item-card { 
+    padding: 20px; text-align: center; justify-content: space-between; gap: 10px;
+}
+.shop-svg svg, .item-icon { width: 80px; height: 80px; margin: 0 auto; display: block; filter: drop-shadow(0 5px 0 rgba(0,0,0,0.3)); }
+.shop-card h4 { margin: 10px 0 5px; font-family: var(--font-head); font-size: 18px; }
+.shop-card p { font-weight: bold; color: #ffd700; margin: 0 0 10px; }
+
+.equipped-border, .item-card.equipped { 
+    border-color: var(--accent); 
+    box-shadow: 0 0 20px rgba(0, 206, 201, 0.2); 
+}
+
+/* --- PROFILE PAGE (New Layout) --- */
+.profile-layout {
+    display: grid; grid-template-columns: 320px 1fr; gap: 30px;
+    padding: 40px 20px; max-width: 1100px; margin: 0 auto;
+}
+@media (max-width: 800px) { .profile-layout { grid-template-columns: 1fr; } }
+
+.profile-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-l);
+    padding: 30px;
+    text-align: center;
+    border: 3px solid #2d3436;
+    position: relative;
+    overflow: hidden;
+}
+.profile-card::before {
+    content: ''; position: absolute; top:0; left:0; width:100%; height: 80px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    z-index: 0;
+}
+.big-avatar-container {
+    width: 140px; height: 140px;
+    margin: 20px auto 15px;
+    position: relative; z-index: 1;
+    background: #14141c;
+    border-radius: 50%;
+    border: 5px solid white;
+    overflow: hidden;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+.stat-row {
+    display: flex; justify-content: space-around;
+    margin-top: 20px; background: #14141c;
+    padding: 15px; border-radius: var(--radius-s);
+}
+.stat-item span { display: block; font-size: 22px; font-weight: bold; color: white; font-family: var(--font-head); }
+.stat-item label { font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+
+.inventory-section { background: var(--bg-dark); }
+
+/* --- MODAL --- */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+    display: none; align-items: center; justify-content: center; z-index: 999;
+}
+.modal-box {
+    background: var(--card-bg); 
+    padding: 30px; 
+    border-radius: var(--radius-l); 
+    width: 400px;
+    border: 3px solid #2d3436;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    text-align: center;
+}
+.modal-box h2 { font-size: 32px; color: white; margin: 0 0 10px; }
+.modal-box p { color: var(--text-muted); font-weight: 600; }
+.modal-actions { 
+    display: flex; gap: 15px; margin-top: 25px; 
+    justify-content: center;
+}
+
+.vubs-icon {
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    margin-right: 5px;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+}
+
+/* --- СТИЛЬ ВАЛЮТЫ (КАК НА СКРИНЕ) --- */
+.vubs-badge {
+    background-color: #202020; /* Темно-серый фон */
+    border: 2px solid #2d2d2d; /* Чуть светлее рамка */
+    border-radius: 50px;       /* Овальная форма */
+    padding: 5px 15px 5px 5px; /* Отступы */
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Fredoka', sans-serif; /* Жирный шрифт */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Тень плашки */
+}
+
+.vubs-icon-img {
+    width: 32px;
+    height: 32px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.vubs-amount {
+    color: #ffeaa7; /* Светло-желтый/золотой */
+    font-size: 20px;
+    font-weight: 800;
+    /* Тень текста для объема как на картинке */
+    text-shadow: 
+        2px 2px 0px #b79038, 
+        0px 0px 5px rgba(255, 215, 0, 0.5);
+    letter-spacing: 1px;
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - TuBlox 2</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-body">
+    <div class="auth-card">
+        <h1>Создать Аккаунт</h1>
+        <div class="input-group">
+            <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="reg-user" placeholder="Никнейм">
+        </div>
+        <div class="input-group">
+            <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="reg-pass" placeholder="Пароль">
+        </div>
+        
+        <div class="color-select">
+            <label>Цвет (или авто):</label>
+            <input type="color" id="reg-color" value="#000000"> 
+            <span style="font-size:10px; color:#888;">(Оставь черным для авто-цвета)</span>
+        </div>
+
+        <button id="btn-submit" class="btn-primary">Зарегистрироваться</button>
+        <a href="login.html" class="auth-link">Уже есть аккаунт? Войти</a>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        document.getElementById('btn-submit').onclick = async () => {
+            const user = document.getElementById('reg-user').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            let color = document.getElementById('reg-color').value;
+            
+            if(color === "#000000") color = null; // Авто-цвет
+
+            if(user.length < 3 || pass.length < 3) {
+                alert("Слишком короткие данные!"); return;
+            }
+
+            try {
+                await registerUser(user, pass, color);
+                window.location.href = 'index.html';
+            } catch(e) {
+                alert("Ошибка: " + e.message);
+            }
+        };
+    </script>
+</body>
+</html>

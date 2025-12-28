@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuBlox 2</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">TuBlox 2</div>
+        <div class="header-right">
+            <!-- SHOP BUTTON -->
+            <button onclick="location.href='shop.html'" class="btn-icon" title="Shop">
+                <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            </button>
+            
+            <div id="profile-area">
+                <a href="login.html" class="btn-primary" style="padding: 8px 16px; font-size: 14px;">Log In</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <h2 style="margin: 20px;">Popular Games</h2>
+        <div id="games-list" class="grid">Loading games...</div>
+    </main>
+
+    <!-- GAME INFO MODAL -->
+    <div id="game-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="gm-name">Game Name</h2>
+            <p id="gm-author" style="color:#aaa">Author</p>
+            <p id="gm-stats" style="margin: 10px 0; font-size:14px; color:#7c4dff;">Stats</p>
+            <p id="gm-desc" style="color:#ccc; font-size:14px; margin-bottom:20px;">Description...</p>
+            <div class="modal-actions">
+                <button id="btn-play" class="btn-primary" style="flex:2;">▶ PLAY</button>
+                <button id="btn-share" class="btn-shop" style="flex:1;">🔗 Link</button>
+                <button onclick="closeGameModal()" class="btn-shop" style="width:50px;">×</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        const socket = io();
+        
+        // Check Login & Render Header
+        async function checkLogin() {
+            // Get fresh session data (balance updates)
+            const user = await getSession(); 
+            
+            if(user) {
+                const avatarSvg = getAvatarSVG(user);
+                
+                document.getElementById('profile-area').innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <!-- Vubs Badge -->
+                        <div class="vubs-badge" onclick="location.href='shop.html'" style="cursor:pointer">
+                            <img src="Assets/vubs.png" class="vubs-icon-img">
+                            <span class="vubs-amount">${user.balance}</span>
+                        </div>
+
+                        <!-- Profile Pill -->
+                        <div class="profile-pill" onclick="location.href='profile.html'">
+                            <div class="mini-avatar-svg">${avatarSvg}</div>
+                            <span>${user.username}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        checkLogin();
+
+        // Load Games
+        socket.emit('request_games');
+        socket.on('update_dashboard', games => {
+            const list = document.getElementById('games-list');
+            list.innerHTML = '';
+            games.forEach(g => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => openGameModal(g);
+                card.innerHTML = `
+                    <div class="card-img-placeholder"></div>
+                    <div class="card-content">
+                        <h4>${g.name}</h4>
+                        <div class="card-meta">
+                            <span>Online: ${g.online}</span>
+                            <span>Visits: ${g.visits}</span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        });
+
+        // Modal Logic
+        function openGameModal(game) {
+            const modal = document.getElementById('game-modal');
+            socket.emit('get_game_details', game.id);
+            
+            document.getElementById('gm-name').textContent = game.name;
+            document.getElementById('gm-author').textContent = "By " + game.author;
+            
+            socket.once('game_details', (details) => {
+                document.getElementById('gm-desc').textContent = details.desc;
+                document.getElementById('gm-stats').textContent = `Online: ${details.online} | Visits: ${details.visits}`;
+            });
+
+            document.getElementById('btn-play').onclick = () => window.location.href = `game.html?id=${game.id}`;
+            document.getElementById('btn-share').onclick = () => {
+                const url = `${window.location.origin}/game.html?id=${game.id}`;
+                navigator.clipboard.writeText(url).then(() => alert('Game Link copied!'));
+            };
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeGameModal() { 
+            document.getElementById('game-modal').style.display = 'none'; 
+        }
+        
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('game-modal')) closeGameModal();
+        }
+    </script>
+</body>
+</html>

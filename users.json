@@ -1,0 +1,23 @@
+{
+  "Today_Idk": {
+    "id": 1,
+    "username": "Today_Idk",
+    "password": -2114507156,
+    "color": "#5d00ff",
+    "balance": 99999590,
+    "inventory": [
+      "default",
+      "face_cool",
+      "hat_cap",
+      "hat_teapot",
+      "face_tilde",
+      "hat_headphones"
+    ],
+    "equipped": {
+      "hat": "hat_teapot",
+      "face": "face_tilde",
+      "item": "none"
+    },
+    "createdAt": 1766920569259
+  }
+}

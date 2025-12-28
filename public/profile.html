@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - TuBlox 2</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <button onclick="window.location.href='index.html'" class="btn-icon">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="logo">PROFILE</div>
+        <div style="width: 48px;"></div>
+    </header>
+
+    <div class="profile-layout">
+        <!-- PLAYER CARD -->
+        <div class="profile-card">
+            <div class="big-avatar-container" id="p-avatar-svg"></div>
+            <h2 id="p-name">Loading...</h2>
+            <p id="p-id" style="color:#a29bfe; font-weight:bold; margin-top:5px;">ID: #0</p>
+            
+            <div class="stat-row">
+                <div class="stat-item">
+                    <!-- Vubs Badge -->
+                    <div class="vubs-badge">
+                        <img src="Assets/vubs.png" class="vubs-icon-img" alt="V">
+                        <span class="vubs-amount" id="p-balance">0</span>
+                    </div>
+                    <label style="margin-top:5px;">Balance</label>
+                </div>
+                <div class="stat-item">
+                    <span id="p-date" style="font-size: 24px; margin-top: 5px;">2025</span>
+                    <label style="margin-top:12px;">Joined</label>
+                </div>
+            </div>
+
+            <div id="profile-controls" style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;"></div>
+            
+            <div id="share-area" style="margin-top: 10px;">
+                <button class="btn-primary" style="background:#2d3436; font-size:14px; padding:8px; box-shadow:none;" onclick="copyProfileLink()">
+                    🔗 Copy Profile Link
+                </button>
+            </div>
+        </div>
+
+        <!-- INVENTORY -->
+        <div class="inventory-section">
+            <h3 id="inv-title">Inventory</h3>
+            <div id="inventory-grid" class="shop-grid"></div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('uid');
+
+        async function initProfile() {
+            const me = await getSession(); 
+            let profileUser = null;
+            let isMyProfile = false;
+
+            if (targetId && me && targetId != me.id) {
+                isMyProfile = false;
+                const res = await fetch('/api/get_user_by_id', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: targetId })
+                });
+                const data = await res.json();
+                if(data.success) profileUser = data.user;
+            } else if (me) {
+                isMyProfile = true;
+                profileUser = me;
+            } else if (targetId) {
+                const res = await fetch('/api/get_user_by_id', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: targetId })
+                });
+                const data = await res.json();
+                if(data.success) profileUser = data.user;
+            }
+
+            if (!profileUser) {
+                alert("Profile not found.");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            renderProfile(profileUser, isMyProfile);
+        }
+
+        function renderProfile(user, isOwner) {
+            document.getElementById('p-name').textContent = user.username;
+            document.getElementById('p-id').textContent = `ID: #${user.id}`;
+            document.getElementById('p-balance').textContent = user.balance;
+            document.getElementById('p-date').textContent = new Date(user.createdAt || Date.now()).getFullYear();
+            document.getElementById('p-avatar-svg').innerHTML = getAvatarSVG(user);
+
+            const controls = document.getElementById('profile-controls');
+            if (isOwner) {
+                controls.innerHTML = `
+                    <button class="btn-primary" onclick="window.location.href='shop.html'">Go to Shop</button>
+                    <button class="btn-primary" style="background: var(--danger); box-shadow: 0 6px 0 #d63031;" onclick="logout()">Log Out</button>
+                `;
+            } else {
+                controls.innerHTML = `<div style="color:#888; font-weight:bold; padding:10px;">Viewing User Profile</div>`;
+                document.getElementById('inv-title').textContent = `${user.username}'s Inventory`;
+            }
+
+            const grid = document.getElementById('inventory-grid');
+            grid.innerHTML = '';
+            const itemsToShow = isOwner ? ['none', ...user.inventory] : user.inventory;
+
+            itemsToShow.forEach(itemId => {
+                const isEquipped = (user.equipped.hat === itemId) || (user.equipped.face === itemId);
+                const itemData = window.GAME_ASSETS[itemId] || { name: itemId, type: 'unknown' };
+                const iconSVG = getItemSVG(itemId);
+
+                const card = document.createElement('div');
+                card.className = `item-card ${isEquipped ? 'equipped' : ''}`;
+                card.innerHTML = `
+                    <div class="item-icon" style="width:60px; height:60px; margin:0 auto;">${iconSVG}</div>
+                    <div style="font-weight:bold; font-size:14px; margin-top:5px;">${itemData.name}</div>
+                    <div style="font-size:10px; color:#888;">${itemData.type ? itemData.type.toUpperCase() : ''}</div>
+                `;
+                
+                if (isOwner) card.onclick = () => equipItemLocal(itemId, itemData.type, user.username);
+                grid.appendChild(card);
+            });
+        }
+
+        async function equipItemLocal(id, type, username) {
+            if(!type) return;
+            if(id === 'none') type = 'hat'; 
+            await fetch('/api/equip', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username, type, itemId: id })
+            });
+            location.reload();
+        }
+
+        function copyProfileLink() {
+            const idText = document.getElementById('p-id').textContent.replace('ID: #', '');
+            const url = `${window.location.origin}${window.location.pathname}?uid=${idText}`;
+            navigator.clipboard.writeText(url).then(() => alert(`Profile Link Copied!\n${url}`));
+        }
+
+        function logout() {
+            localStorage.removeItem('tublox_user');
+            localStorage.removeItem('tublox_uid');
+            window.location.href = 'login.html';
+        }
+
+        initProfile();
+    </script>
+</body>
+</html>

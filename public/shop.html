@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shop - TuBlox 2</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-right">
+            <button onclick="location.href='index.html'" class="btn-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="logo">SHOP</div>
+        </div>
+        
+        <!-- Vubs Badge in Header -->
+        <div class="vubs-badge">
+            <img src="Assets/vubs.png" class="vubs-icon-img" alt="V">
+            <span class="vubs-amount" id="user-balance">...</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="shop-grid" id="shop-grid">
+            <!-- Items injected by JS -->
+        </div>
+    </main>
+
+    <script src="js/utils.js"></script>
+    <script>
+        const user = JSON.parse(localStorage.getItem('tublox_user'));
+        if(!user) location.href = 'login.html';
+
+        // Fetch fresh data
+        fetch('/api/profile', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: user.username })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                renderShop(data.user);
+                localStorage.setItem('tublox_user', JSON.stringify(data.user));
+            }
+        });
+
+        function renderShop(u) {
+            document.getElementById('user-balance').innerText = u.balance;
+            const grid = document.getElementById('shop-grid');
+            grid.innerHTML = '';
+
+            for (let itemId in window.GAME_ASSETS) {
+                const item = window.GAME_ASSETS[itemId];
+                
+                if (item.price === 0) continue; // Skip default items
+
+                const owned = u.inventory.includes(itemId);
+                const iconSVG = getItemSVG(itemId);
+
+                const card = document.createElement('div');
+                card.className = 'shop-card';
+                card.innerHTML = `
+                    <div class="item-icon" style="width:80px; height:80px; margin:0 auto;">${iconSVG}</div>
+                    <h4>${item.name}</h4>
+                    <p style="display:flex; align-items:center; justify-content:center; gap:5px; color:#ffeaa7; font-weight:bold;">
+                        <img src="Assets/vubs.png" style="width:20px;height:20px; vertical-align:middle;"> ${item.price}
+                    </p>
+                    <button class="btn-primary btn-shop" onclick="buy('${itemId}', ${item.price})" ${owned ? 'disabled style="opacity:0.5; cursor:default;"' : ''}>
+                        ${owned ? 'OWNED' : 'BUY'}
+                    </button>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        function buy(id, price) {
+            fetch('/api/buy', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user.username, itemId: id, price })
+            }).then(res => res.json()).then(data => {
+                if(data.success) location.reload();
+                else alert(data.error);
+            });
+        }
+    </script>
+</body>
+</html>
