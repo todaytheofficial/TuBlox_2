@@ -324,3 +324,26 @@ h2, h3 { font-family: var(--font-head); color: white; margin-bottom: 15px; }
         0px 0px 5px rgba(255, 215, 0, 0.5);
     letter-spacing: 1px;
 }
+
+/* Стиль для кнопки Studio */
+.btn-shop {
+    padding: 8px 15px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.btn-shop:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+}
+
+/* Окно статистики в модельном окне */
+#gm-stats {
+    background: rgba(0,0,0,0.3);
+    padding: 10px;
+    border-radius: 10px;
+    line-height: 1.6;
+}

@@ -4,18 +4,29 @@
     "username": "Today_Idk",
     "password": -2114507156,
     "color": "#5d00ff",
-    "balance": 99999590,
+    "balance": 99997770,
     "inventory": [
       "default",
       "face_cool",
       "hat_cap",
       "hat_teapot",
       "face_tilde",
-      "hat_headphones"
+      "hat_headphones",
+      "pass_g_1766928010793",
+      "face_sad",
+      "face_angry",
+      "face_uwu",
+      "face_ninja",
+      "face_rich",
+      "hat_top",
+      "hat_crown",
+      "hat_cat",
+      "hat_viking",
+      "hat_halo"
     ],
     "equipped": {
-      "hat": "hat_teapot",
-      "face": "face_tilde",
+      "hat": "hat_headphones",
+      "face": "face_rich",
       "item": "none"
     },
     "createdAt": 1766920569259

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TuBlox Studio</title>
+    <style>
+        :root { --bg: #1e1e1e; --panel: #2d2d2d; --accent: #0078d7; --border: #3f3f3f; --text: #e0e0e0; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Верхняя панель (Ribbon) */
+        .ribbon { position: absolute; top: 0; left: 0; right: 0; height: 45px; background: var(--panel); border-bottom: 1px solid #111; display: flex; align-items: center; padding: 0 15px; gap: 10px; z-index: 100; }
+        .ribbon button { background: #3d3d3d; border: 1px solid var(--border); color: white; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+        .ribbon button:hover { background: #505050; }
+        .ribbon .primary { background: var(--accent); border: none; }
+        
+        /* Основная рабочая область */
+        .main-container { display: flex; flex: 1; margin-top: 45px; width: 100%; }
+        canvas { flex: 1; background: #252525; outline: none; cursor: crosshair; }
+
+        /* Боковая панель */
+        .sidebar { width: 300px; background: var(--panel); border-left: 1px solid #111; display: flex; flex-direction: column; }
+        .panel-title { background: #383838; padding: 6px 10px; font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #111; color: #aaa; }
+        
+        .explorer { height: 40%; overflow-y: auto; border-bottom: 2px solid #111; }
+        .properties { flex: 1; padding: 10px; font-size: 13px; overflow-y: auto; }
+        
+        .obj-item { padding: 5px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .obj-item:hover { background: #3e3e3e; }
+        .obj-item.selected { background: #264f78; }
+
+        input, select { background: #1e1e1e; border: 1px solid var(--border); color: white; padding: 4px; width: 100%; margin: 5px 0 10px 0; box-sizing: border-box; }
+        label { color: #aaa; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="ribbon">
+        <b style="margin-right:20px; color:var(--accent)">TuBlox Studio</b>
+        <button class="primary" onclick="addPart()">+ Add Part</button>
+        <button onclick="saveMap()">Save Project</button>
+        <div style="flex:1"></div>
+        <label>Status:</label>
+        <select id="publishStatus" onchange="saveMap()" style="width:100px; margin:0 10px;">
+            <option value="private">Private</option>
+            <option value="public">Public</option>
+        </select>
+        <button onclick="location.href='index.html'" style="background:#c0392b">Exit</button>
+    </div>
+
+    <div class="main-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="sidebar">
+            <div class="panel-title">Explorer</div>
+            <div id="explorer-list" class="explorer"></div>
+            
+            <div class="panel-title">Properties</div>
+            <div id="properties-panel" class="properties">
+                <p style="color:#666; text-align:center">Select a part to edit</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="studio.js"></script>
+</body>
+</html>

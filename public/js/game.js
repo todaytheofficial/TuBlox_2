@@ -2,50 +2,48 @@ const socket = io();
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Получаем ID игры
+// --- НАСТРОЙКИ МИРА ---
 const urlParams = new URLSearchParams(window.location.search);
 const gameId = urlParams.get('id') || "game1";
+const WORLD_FLOOR_LIMIT = 2000; 
 
-// --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 let me = null;
 let players = {};
+let platforms = []; 
 let inputs = { left: false, right: false, jump: false };
-let lastSentState = { x: 0, y: 0, isMoving: false, grounded: true }; // Оптимизация отправки
 let particles = []; 
-
-// МИР
-const WORLD_FLOOR = 600;
 let cameraX = 0;
 let cameraY = 0;
 
-const platforms = [
-    { x: -2000, y: WORLD_FLOOR, w: 10000, h: 100 }, 
-    { x: 300, y: WORLD_FLOOR - 150, w: 200, h: 20 },
-    { x: 600, y: WORLD_FLOOR - 300, w: 200, h: 20 },
-    { x: 900, y: WORLD_FLOOR - 450, w: 100, h: 20 },
-    { x: 100, y: WORLD_FLOOR - 250, w: 100, h: 20 },
-    { x: 1300, y: WORLD_FLOOR - 400, w: 150, h: 20 },
-];
-
-// --- 1. АВТОРИЗАЦИЯ И ВХОД ---
+// --- 1. АВТОРИЗАЦИЯ ---
 const storedUser = localStorage.getItem('tublox_user');
 if (!storedUser) { window.location.href = 'login.html'; }
 const currentUser = JSON.parse(storedUser);
 
-let uid = localStorage.getItem('tublox_uid');
-if (!uid) {
-    uid = 'u_' + Date.now() + Math.random().toString(36).substr(2, 5);
-    localStorage.setItem('tublox_uid', uid);
-}
-
 socket.emit('join_game', { 
     gameId, 
-    username: currentUser.username,
-    userData: { id: uid } 
+    username: currentUser.username 
 });
 
 // --- 2. СЕТЕВЫЕ СОБЫТИЯ ---
-socket.on('init_game', (p) => { players = p; me = players[socket.id]; });
+socket.on('init_game', (data) => { 
+    players = data.players || {}; 
+    me = players[socket.id]; 
+    
+    if (data.map && data.map.length > 0) {
+        platforms = data.map.map(p => ({
+            ...p, // Это самое важное: копирует text, textColor и textSize
+            x: Number(p.x),
+            y: Number(p.y),
+            w: Number(p.w),
+            h: Number(p.h)
+        }));
+    } else {
+        platforms = [{ x: -1000, y: 600, w: 5000, h: 100, color: '#1e1e29', type: 'baseplate' }];
+    }
+    respawnPlayer();
+});
+
 socket.on('player_spawn', (p) => { players[p.id] = p; });
 
 socket.on('player_update', (p) => { 
@@ -57,15 +55,14 @@ socket.on('player_update', (p) => {
 });
 
 socket.on('player_leave', (id) => { delete players[id]; });
-socket.on('force_disconnect', (msg) => { alert(msg); window.location.href = 'index.html'; });
 
-// Смерть и Респаун
 socket.on('player_died_anim', (id) => {
     if (players[id]) {
         players[id].dead = true;
         createExplosion(players[id].x + 15, players[id].y + 30, players[id].color);
     }
 });
+
 socket.on('player_respawned', (data) => {
     if (players[data.id]) {
         players[data.id].dead = false;
@@ -76,67 +73,25 @@ socket.on('player_respawned', (data) => {
     }
 });
 
-// Чат
-const chatInput = document.getElementById('chatInput');
-const msgsBox = document.getElementById('msgs');
-const sendChat = () => {
-    if (chatInput.value.trim()) {
-        socket.emit('send_message', chatInput.value);
-        chatInput.value = '';
-    }
-};
-if (document.getElementById('chatSendBtn')) document.getElementById('chatSendBtn').onclick = sendChat;
-if (chatInput) chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
-
-socket.on('chat_message', (msg) => {
-    const el = document.createElement('div');
-    el.innerHTML = `<span style="color:${msg.color || '#a29bfe'}; font-weight:700;">${msg.username}:</span> ${msg.text}`;
-    msgsBox.appendChild(el);
-    msgsBox.scrollTop = msgsBox.scrollHeight;
-});
-
-// --- 3. ЧАСТИЦЫ ---
-class Particle {
-    constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
-        this.size = Math.random() * 8 + 4;
-        this.vx = (Math.random() - 0.5) * 12;
-        this.vy = (Math.random() - 0.5) * 12 - 5;
-        this.life = 1.0;
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy; this.vy += 0.5; this.life -= 0.02;
-    }
-    draw(ctx) {
-        ctx.globalAlpha = Math.max(0, this.life);
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.size, this.size);
-        ctx.globalAlpha = 1.0;
-    }
+// --- 3. ФИЗИКА (БЕЗ ПРОВАЛИВАНИЙ) ---
+function respawnPlayer() {
+    if (!me) return;
+    const spawn = platforms.find(p => p.type === 'spawn') || { x: 100, y: 500, w: 30 };
+    me.x = spawn.x + (spawn.w / 2) - 15;
+    me.y = spawn.y - 70;
+    me.dy = 0;
+    me.dead = false;
 }
-function createExplosion(x, y, color) {
-    for (let i = 0; i < 20; i++) {
-        particles.push(new Particle(x, y, color));
-        particles.push(new Particle(x, y, '#ffccaa'));
-    }
-}
-
-// --- 4. ФИЗИКА ---
-window.addEventListener('blur', () => {
-    inputs = { left: false, right: false, jump: false };
-    if (me && !me.dead) {
-        me.isMoving = false;
-        socket.emit('player_input', { x: me.x, y: me.y, direction: me.direction, isMoving: false, grounded: true });
-    }
-});
 
 function die() {
-    if (me.dead) return;
+    if (!me || me.dead) return;
     me.dead = true;
     socket.emit('player_die');
-    setTimeout(() => { socket.emit('player_respawn'); }, 3000);
+    setTimeout(() => {
+        respawnPlayer();
+        socket.emit('player_respawn');
+    }, 2000);
 }
-window.resetCharacterLocal = function() { if (me && !me.dead) die(); }
 
 function updatePhysics() {
     if (!me || me.dead) return;
@@ -144,195 +99,194 @@ function updatePhysics() {
     let moved = false;
     me.isMoving = false;
 
+    // Горизонтальное движение
     if (inputs.left) { me.x -= 6; me.direction = -1; me.isMoving = true; moved = true; }
     if (inputs.right) { me.x += 6; me.direction = 1; me.isMoving = true; moved = true; }
-    if (inputs.jump && me.grounded) { me.dy = -14; me.grounded = false; moved = true; }
+    
+    // Гравитация
+    me.dy = (me.dy || 0) + 0.8;
+    let nextY = me.y + me.dy;
+    
+    let wasGrounded = me.grounded;
+    me.grounded = false; 
 
-    me.dy = (me.dy || 0) + 0.7;
-    me.y += me.dy;
-    me.grounded = false; // Сбрасываем, проверим ниже
-
+    // Логика коллизий (AABB с предсказанием)
+    
     platforms.forEach(p => {
-        if (me.x < p.x + p.w && me.x + 30 > p.x && me.y + 60 > p.y && me.y + 60 < p.y + p.h + 20 && me.dy > 0) {
-            me.y = p.y - 60; me.dy = 0; me.grounded = true;
+        const pLeft = me.x + 5;
+        const pRight = me.x + 25;
+        const pBottom = me.y + 60;
+        const nextBottom = nextY + 60;
+
+        // Если игрок находится в пределах ширины платформы
+        if (pRight > p.x && pLeft < p.x + p.w) {
+            // Проверка: был ли игрок выше платформы и станет ли ниже/внутри нее
+            if (pBottom <= p.y + 2 && nextBottom >= p.y && me.dy >= 0) {
+                nextY = p.y - 60; 
+                me.dy = 0; 
+                me.grounded = true;
+            }
         }
     });
 
-    if (me.y > WORLD_FLOOR + 500) die();
+    me.y = nextY;
 
-    // Отправляем данные, если что-то изменилось (позиция, движение или статус прыжка)
-    // Добавили grounded в отправку, чтобы другие видели анимацию прыжка
-    if (moved || !me.grounded || me.isMoving !== lastSentState.isMoving || me.grounded !== lastSentState.grounded) {
+    // Прыжок
+    if (inputs.jump && me.grounded) { 
+        me.dy = -15; 
+        me.grounded = false; 
+        moved = true; 
+    }
+
+    // Падение в бездну
+    if (me.y > WORLD_FLOOR_LIMIT) die();
+
+    // Отправка данных на сервер
+    if (moved || me.dy !== 0 || me.grounded !== wasGrounded) {
         socket.emit('player_input', { 
-            x: me.x, 
-            y: me.y, 
+            x: Math.round(me.x), 
+            y: Math.round(me.y), 
             direction: me.direction, 
             isMoving: me.isMoving,
-            grounded: me.grounded // ВАЖНО: Отправляем статус "на земле"
-        });
-        
-        lastSentState = { 
-            x: me.x, y: me.y, 
-            isMoving: me.isMoving, 
             grounded: me.grounded 
-        };
+        });
     }
 }
 
+// --- ОБНОВЛЕННАЯ ОТРИСОВКА С АКСЕССУАРАМИ (ФИКС) ---
+const svgCache = {}; // Кэш для изображений, чтобы не пересоздавать их каждый кадр
+
 function drawAvatar(ctx, p) {
-    if (!p) return;
-    if (p.dead) return; // Если мертв, не рисуем тело
+    if (!p || p.dead) return;
 
     ctx.save();
-    
-    // Центр игрока
-    ctx.translate(p.x + 15, p.y + 60); // Центр ног (низ)
-    
-    // Зеркалирование направления
-    ctx.scale(p.direction, 1); 
+    ctx.translate(p.x + 15, p.y + 60); 
+    ctx.scale(p.direction || 1, 1); 
 
-    // --- ЛОГИКА АНИМАЦИИ ---
     let legAngle = 0;
-    let armAngle = 0; // Угол рук (0 - вниз)
+    let armAngle = 0;
 
     if (!p.grounded) {
-        // --- АНИМАЦИЯ ПРЫЖКА (Руки вверх!) ---
-        // Если летим вверх (p.dy < 0) или висим в пике - руки подняты
-        // -Math.PI = руки полностью вверх. -2.8 - чуть в стороны (как V)
-        
-        // Плавный переход: если dy маленький (пик прыжка), руки максимально высоко
-        if (p.dy < 0) {
-            armAngle = -2.8; // Резко вверх при прыжке
-        } else {
-            armAngle = -2.5; // Чуть шире при падении (парашютик)
-        }
-        
-        // Ноги в прыжке чуть поджаты или одна вперед
+        armAngle = (p.dy < 0) ? -2.8 : -2.5; 
         legAngle = 0.5; 
-
     } else if (p.isMoving) {
-        // --- ХОДЬБА ---
         const walkCycle = Math.sin(Date.now() / 100);
         legAngle = walkCycle * 0.6;
-        armAngle = walkCycle * 0.6; // Машем руками при ходьбе
-    } else {
-        // --- СТОИМ ---
-        legAngle = 0;
-        armAngle = 0; // Руки по швам
+        armAngle = walkCycle * 0.6; 
     }
 
     const skin = '#ffccaa';
 
-    // 1. Нога задняя
+    // 1. Ноги
     ctx.fillStyle = '#222';
-    ctx.save(); 
-    ctx.translate(0, -25); // Точка вращения бедра
-    ctx.rotate(p.grounded ? -legAngle : -0.2); // Если прыгаем, ноги статичны
-    ctx.fillRect(-6, 0, 12, 25); 
-    ctx.restore();
+    ctx.save(); ctx.translate(0, -25); ctx.rotate(p.grounded ? -legAngle : -0.2); ctx.fillRect(-6, 0, 12, 25); ctx.restore();
+    ctx.save(); ctx.translate(0, -25); ctx.rotate(p.grounded ? legAngle : 0.4); ctx.fillRect(-6, 0, 12, 25); ctx.restore();
 
-    // 2. Нога передняя
-    ctx.save(); 
-    ctx.translate(0, -25); 
-    ctx.rotate(p.grounded ? legAngle : 0.4); 
-    ctx.fillRect(-6, 0, 12, 25); 
-    ctx.restore();
-
-    // 3. Рука задняя (Вращаем от плеча)
-    ctx.fillStyle = skin;
-    ctx.save(); 
-    ctx.translate(0, -45); // Точка плеча
-    ctx.rotate(p.grounded ? -armAngle : armAngle); // В прыжке обе руки вверх (armAngle)
-    ctx.fillRect(-6, 0, 12, 22); 
-    ctx.restore();
-
-    // 4. Торс (Тело прямое, не крутится)
-    ctx.fillStyle = p.color;
+    // 2. Тело
+    ctx.fillStyle = p.color || '#6c5ce7';
     ctx.fillRect(-11, -55, 22, 30);
 
-    // 5. Голова
+    // 3. Руки
     ctx.fillStyle = skin;
+    ctx.save(); ctx.translate(0, -45); ctx.rotate(armAngle); ctx.fillRect(-6, 0, 12, 22); ctx.restore(); 
+
+    // 4. Голова (база)
     ctx.beginPath(); 
+    ctx.fillStyle = skin;
     ctx.roundRect(-12, -80, 24, 25, 6); 
     ctx.fill();
 
-    // --- ЛИЦА ---
-    ctx.fillStyle = '#111';
-    if(p.face === 'face_cool') {
-        ctx.fillStyle = 'black'; ctx.fillRect(-9, -72, 18, 6); 
-        ctx.fillStyle = 'white'; ctx.fillRect(-7, -70, 4, 2); 
-    } else if (p.face === 'face_sad') {
-        ctx.fillRect(2, -72, 3, 5); ctx.fillRect(10, -72, 3, 5);
-        ctx.beginPath(); ctx.arc(7, -62, 4, 3.4, 6); ctx.stroke();
-    } else if (p.face === 'face_tilde') {
-        ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(-8, -72); ctx.quadraticCurveTo(-7, -75, -4, -72); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(4, -72); ctx.quadraticCurveTo(7, -75, 8, -72); ctx.stroke();
-        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(0, -66, 2, 0, Math.PI*2); ctx.fill();
-    } else {
-        ctx.fillRect(2, -72, 3, 5); ctx.fillRect(10, -72, 3, 5);
-        ctx.beginPath(); ctx.arc(7, -66, 4, 0.2, Math.PI - 0.2); ctx.stroke();
+    // --- ОТРИСОВКА АКСЕССУАРОВ (УВЕЛИЧЕННЫХ) ---
+    
+    // Лицо: рисуем на всю площадь головы (24x25)
+    const faceKey = p.face || 'face_smile';
+    const assetFace = GAME_ASSETS[faceKey];
+    if (assetFace && assetFace.svg) {
+        // x: -12, y: -80, w: 24, h: 25
+        drawSvgComponent(ctx, assetFace.svg, -12, -80, 32, 30);
     }
 
-    // --- ШЛЯПЫ ---
-    if(p.hat === 'hat_top') {
-        ctx.fillStyle = 'blue'; ctx.beginPath(); ctx.arc(0, -82, 14, Math.PI, 0); ctx.fill();
-        ctx.fillStyle = '#0000cc'; ctx.fillRect(-14, -82, 28, 4);
-    } else if (p.hat === 'hat_cap') {
-        ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.arc(0, -80, 13, Math.PI, 0); ctx.fill();
-        ctx.fillRect(0, -80, 18, 4);
-    } else if (p.hat === 'hat_headphones') {
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(0, -78, 14, Math.PI, 0); ctx.stroke();
-        ctx.fillStyle = 'red'; ctx.fillRect(-16, -80, 6, 12); ctx.fillRect(10, -80, 6, 12);
-    } else if (p.hat === 'hat_teapot') {
-        ctx.fillStyle = '#f0f0f0'; ctx.beginPath(); ctx.arc(0, -90, 14, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(10, -90); ctx.quadraticCurveTo(22, -100, 14, -80); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-10, -90); ctx.lineTo(-20, -98); ctx.stroke();
-        ctx.fillStyle = '#ff7675'; ctx.fillRect(-3, -107, 6, 4);
+    // Шапка/Корона: рисуем чуть больше и выше
+    if (p.hat && p.hat !== 'none') {
+        const assetHat = GAME_ASSETS[p.hat];
+        if (assetHat && assetHat.svg) {
+            // x: -14 (чуть шире), y: -95 (выше головы), w: 28, h: 30
+            drawSvgComponent(ctx, assetHat.svg, -28, -90, 56, 44);
+        }
     }
 
-    // 6. Рука передняя
-    ctx.fillStyle = skin;
-    ctx.save(); 
-    ctx.translate(0, -45); // Плечо
-    ctx.rotate(p.grounded ? armAngle : armAngle); // В прыжке так же вверх
-    ctx.fillRect(-6, 0, 12, 22); 
     ctx.restore();
+}
 
-    ctx.restore();
+function drawSvgComponent(ctx, svgContent, x, y, w, h) {
+    // Используем viewBox="0 0 24 24", чтобы содержимое растягивалось под наши размеры w и h
+    const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${w}" height="${h}">${svgContent}</svg>`;
+    
+    if (!svgCache[svgContent]) {
+        const img = new Image();
+        const svgBlob = new Blob([fullSvg], {type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(svgBlob);
+        img.src = url;
+        svgCache[svgContent] = { img, ready: false };
+        img.onload = () => { svgCache[svgContent].ready = true; };
+    }
+    
+    const item = svgCache[svgContent];
+    if (item.ready) {
+        // Рисуем картинку с заданными размерами
+        ctx.drawImage(item.img, x, y, w, h);
+    }
 }
 
 function render() {
     if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     }
+    
     if (me) {
         cameraX += (me.x - canvas.width / 2 - cameraX) * 0.1;
         cameraY += (me.y - canvas.height / 2 + 100 - cameraY) * 0.1;
     }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(-cameraX, -cameraY);
 
-    platforms.forEach(p => {
-        ctx.fillStyle = '#1e1e29'; ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#6c5ce7'; ctx.fillRect(p.x, p.y, p.w, 6);
-        ctx.strokeStyle = '#2d2d3a'; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.w, p.h);
-    });
+// Платформы
+platforms.forEach(p => {
+    ctx.fillStyle = p.color || '#1e1e29'; 
+    ctx.fillRect(p.x, p.y, p.w, p.h);
 
+    // --- ВОТ ЭТОТ ФРАГМЕНТ ДЛЯ ТЕКСТА ---
+    if (p.text) {
+        ctx.save();
+        ctx.fillStyle = p.textColor || 'white';
+        ctx.font = `bold ${p.textSize || 20}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.text, p.x + p.w / 2, p.y + p.h / 2);
+        ctx.restore();
+    }
+    // ------------------------------------
+
+    if (p.type === 'spawn') {
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.strokeRect(p.x, p.y, p.w, p.h);
+    }
+});
+    // Игроки
     for (let id in players) {
         let p = (id === socket.id && me) ? me : players[id];
         drawAvatar(ctx, p);
         if (!p.dead) {
-            ctx.fillStyle = 'white'; ctx.font = '700 14px "Quicksand", sans-serif';
-            ctx.textAlign = 'center'; ctx.shadowColor = "black"; ctx.shadowBlur = 4;
-            ctx.fillText(p.username, p.x + 15, p.y - 45); // Ник чуть выше из-за вращения
-            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(p.username, p.x + 15, p.y - 45);
         }
     }
 
+    // Частицы
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update(); particles[i].draw(ctx);
         if (particles[i].life <= 0) particles.splice(i, 1);
@@ -342,26 +296,65 @@ function render() {
     updatePhysics();
     requestAnimationFrame(render);
 }
-render();
 
-// Управление
+// --- 5. ЭФФЕКТЫ ---
+function createExplosion(x, y, color) {
+    for (let i = 0; i < 20; i++) {
+        particles.push({
+            x, y, color,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            life: 1.0,
+            update() { this.x += this.vx; this.y += this.vy; this.vy += 0.2; this.life -= 0.02; },
+            draw(ctx) { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, 5, 5); ctx.globalAlpha = 1; }
+        });
+    }
+}
+
+// --- 6. УПРАВЛЕНИЕ ---
 window.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') inputs.left = true;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') inputs.right = true;
-    if (e.code === 'Space' || e.code === 'ArrowUp') inputs.jump = true;
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') inputs.jump = true;
 });
 window.addEventListener('keyup', e => {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') inputs.left = false;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') inputs.right = false;
-    if (e.code === 'Space' || e.code === 'ArrowUp') inputs.jump = false;
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') inputs.jump = false;
 });
-if ('ontouchstart' in window) {
-    document.getElementById('mobileControls').style.display = 'flex';
-    const t = (id, k) => {
-        const el = document.getElementById(id);
-        el.addEventListener('touchstart', (e) => { e.preventDefault(); inputs[k] = true; });
-        el.addEventListener('touchend', (e) => { e.preventDefault(); inputs[k] = false; });
-    };
-    t('btnL', 'left'); t('btnR', 'right'); t('btnJ', 'jump');
+
+render();
+
+// --- ФУНКЦИЯ ДЛЯ КНОПКИ RESET ---
+function resetCharacterLocal() {
+    if (me && !me.dead) {
+        die(); // Используем уже готовую функцию смерти
+    }
 }
+
+// --- ЛОГИКА ЧАТА ---
+const chatInput = document.getElementById('chatInput');
+const chatBtn = document.getElementById('chatSendBtn');
+const msgsDiv = document.getElementById('msgs');
+
+function sendMessage() {
+    const text = chatInput.value.trim();
+    if (text) {
+        socket.emit('send_msg', text);
+        chatInput.value = '';
+    }
+}
+
+chatBtn.onclick = sendMessage;
+chatInput.onkeydown = (e) => {
+    if (e.key === 'Enter') sendMessage();
+};
+
+// Получение сообщений
+socket.on('new_msg', (data) => {
+    const div = document.createElement('div');
+    div.innerHTML = `<b>${data.user}:</b> ${data.text}`;
+    msgsDiv.appendChild(div);
+    msgsDiv.scrollTop = msgsDiv.scrollHeight; // Автопрокрутка вниз
+});
