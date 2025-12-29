@@ -9,20 +9,20 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'TuBloxDB',
-    port: process.env.DB_PORT || 3306,
-    // ДОБАВЬТЕ ИЛИ ИЗМЕНИТЕ ЭТУ СТРОКУ:
-    ssl: false 
-};
-
 let db;
 
+
+const dbConfig = process.env.DATABASE_URL || {
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'TuBloxDB'
+};
+
+// В initDB измени создание подключения:
 async function initDB() {
     try {
+        // mysql2 умеет принимать либо объект, либо готовую строку URL
         db = await mysql.createConnection(dbConfig);
         console.log("--- ✅ MySQL Connected! ---");
 
