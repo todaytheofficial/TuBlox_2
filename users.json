@@ -3,7 +3,7 @@
     "id": 1,
     "username": "Today_Idk",
     "password": -2114507156,
-    "color": "#5d00ff",
+    "color": "#6c5ce7",
     "balance": 99995260,
     "inventory": [
       "default",
@@ -51,6 +51,6 @@
       "shirt": "shirt_gold",
       "pants": "none_pants"
     },
-    "createdAt": 1766920569259
+    "createdAt": 1767008582578
   }
 }
