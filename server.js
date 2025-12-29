@@ -1,3 +1,4 @@
+require('dotenv').config(); // ЗАГРУЗКА .ENV
 const express = require('express');
 const mysql = require('mysql2/promise');
 const app = express();
@@ -8,12 +9,14 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// --- НАСТРОЙКА MYSQL ---
 const dbConfig = {
-    host: 'localhost',
-    user: 'root',      // Ваш пользователь
-    password: '',      // Ваш пароль
-    database: 'TuBloxDB' // Ваше имя БД
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'TuBloxDB',
+    port: process.env.DB_PORT || 3306,
+    // ДОБАВЬТЕ ИЛИ ИЗМЕНИТЕ ЭТУ СТРОКУ:
+    ssl: false 
 };
 
 let db;
