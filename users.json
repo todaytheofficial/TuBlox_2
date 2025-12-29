@@ -4,7 +4,7 @@
     "username": "Today_Idk",
     "password": -2114507156,
     "color": "#5d00ff",
-    "balance": 99997025,
+    "balance": 99995260,
     "inventory": [
       "default",
       "face_cool",
@@ -27,12 +27,28 @@
       "face_smile",
       "pants_noob",
       "shirt_noob",
-      "pants_dark"
+      "pants_dark",
+      "face_beard",
+      "face_cyclops",
+      "face_love",
+      "face_pixel",
+      "face_mask",
+      "shirt_suit",
+      "shirt_camo",
+      "shirt_stripe",
+      "shirt_black",
+      "shirt_gold",
+      "pants_jeans",
+      "pants_shorts",
+      "pants_camo",
+      "pants_khaki",
+      "hat_melon",
+      "hat_party"
     ],
     "equipped": {
       "hat": "hat_crown",
-      "face": "face_rich",
-      "shirt": "shirt_christmas",
+      "face": "face_pixel",
+      "shirt": "shirt_gold",
       "pants": "none_pants"
     },
     "createdAt": 1766920569259

@@ -74,7 +74,7 @@ if (fs.existsSync(GAMES_FILE)) {
     } catch (e) { console.error(e); }
 }
 
-// --- ЛОГИКА ЗАРАБОТКА (ROYALTY) ---
+// --- ЛОГИКА ЗАРАБОТКА ЗА (ROYALTY) ---
 setInterval(() => {
     let earned = false;
     Object.values(games).forEach(game => {
@@ -208,7 +208,8 @@ io.on('connection', (socket) => {
             hat: user.equipped.hat || 'none',
             face: user.equipped.face || 'face_smile',
             shirt: user.equipped.shirt || 'none_shirt',
-            pants: user.equipped.pants || 'none_pants'
+            pants: user.equipped.pants || 'none_pants',
+            dead: false
         };
 
         socket.emit('init_game', { map: game.map, players: game.players });
@@ -217,9 +218,30 @@ io.on('connection', (socket) => {
 
     socket.on('player_input', (data) => {
         const game = games[socket.gameId];
-        if (game && game.players[socket.id]) {
+        if (game && game.players[socket.id] && !game.players[socket.id].dead) {
             Object.assign(game.players[socket.id], data);
             socket.to(socket.gameId).emit('player_update', { id: socket.id, ...data });
+        }
+    });
+
+    socket.on('player_die', () => {
+        const game = games[socket.gameId];
+        if (game && game.players[socket.id]) {
+            game.players[socket.id].dead = true;
+            io.to(socket.gameId).emit('player_died_anim', socket.id);
+        }
+    });
+
+    socket.on('player_respawn', () => {
+        const game = games[socket.gameId];
+        if (game && game.players[socket.id]) {
+            const spawn = game.map.find(p => p.type === 'spawn') || { x: 100, y: 500, w: 30 };
+            game.players[socket.id].x = spawn.x + (spawn.w / 2) - 15;
+            game.players[socket.id].y = spawn.y - 70;
+            game.players[socket.id].dy = 0;
+            game.players[socket.id].dead = false;
+            game.players[socket.id].grounded = false;
+            io.to(socket.gameId).emit('player_respawned', { id: socket.id, x: game.players[socket.id].x, y: game.players[socket.id].y });
         }
     });
 
@@ -238,4 +260,3 @@ io.on('connection', (socket) => {
 });
 
 http.listen(3000, () => console.log('Server running on http://localhost:3000'));
-

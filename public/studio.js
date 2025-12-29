@@ -1,415 +1,403 @@
 // ==========================================
-//   GLOBAL VARIABLES
+// GLOBAL VARIABLES
 // ==========================================
-
-// Canvas и контекст
 let canvas, ctx;
 let modelPreviewCanvas, modelPreviewCtx;
-
-// Studio state
 let studioObjects = [];
 let selectedObj = null;
 let camX = 0, camY = 0;
 let isPanning = false, isDragging = false;
+
+// === SCALE VARIABLES (НОВЫЕ) ===
+let isResizing = false;
+let resizeHandle = null; // 'n', 's', 'e', 'w', 'ne', etc.
+let resizeStart = { x: 0, y: 0, w: 0, h: 0, mx: 0, my: 0 };
+// ===============================
+
 let startX, startY;
 let contextMenuObj = null;
 
+// SVG ICONS (CONSTANTS)
+const ICONS = {
+    part: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>',
+    spawn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>',
+    text: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>',
+    trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
+    edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+    box: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>'
+};
+
 // TuModels state
-let currentTool = 'part'; // 'part', 'spawn', 'text'
+let currentTool = 'part';
 let currentTab = 'build';
-let modelsLibrary = [];
+let modelsLibrary = [
+    {
+        id: 'kill_part',
+        name: 'Kill Part',
+        objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#ff0000', anchored: true, collide: true, special: 'kill', transparency: 0 }]
+    },
+    {
+        id: 'teleport_part_1',
+        name: 'Teleport Part 1',
+        objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#0000ff', anchored: true, collide: true, special: 'teleport', target: 'teleport_part_2', transparency: 0 }]
+    },
+    {
+        id: 'teleport_part_2',
+        name: 'Teleport Part 2',
+        objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#0000ff', anchored: true, collide: true, special: 'teleport', target: 'teleport_part_1', transparency: 0 }]
+    }
+];
+
 let currentModel = null;
 let selectedModel = null;
-
-// DOM elements
 let contextMenu, textBtn, modal, textInput, fontSelect, fontPreview;
 let saveBtn, modelsLibraryEl;
-
-// User data
 let currentUser;
 let gameId;
 
 // ==========================================
-//   INITIALIZATION
+// INITIALIZATION
 // ==========================================
-
 function initStudio() {
-    // Получаем canvas и контекст
     canvas = document.getElementById('gameCanvas');
-    if (!canvas) {
-        console.error('Canvas not found!');
-        return;
-    }
+    if (!canvas) return;
     ctx = canvas.getContext('2d');
-    
-    // Получаем preview canvas
+
     modelPreviewCanvas = document.getElementById('modelPreviewCanvas');
     if (modelPreviewCanvas) {
         modelPreviewCtx = modelPreviewCanvas.getContext('2d');
     }
-    
-    // Получаем DOM элементы
+
     contextMenu = document.getElementById('context-menu');
     if (contextMenu) {
-        textBtn = contextMenu.querySelector('button:first-child');
+        textBtn = contextMenu.querySelector('button:nth-child(2)');
     }
-    
+
     modal = document.getElementById('text-modal-overlay');
     textInput = document.getElementById('modal-text-input');
     fontSelect = document.getElementById('modal-font-select');
     fontPreview = document.getElementById('font-preview-box');
-    
     saveBtn = document.getElementById('save-btn');
     modelsLibraryEl = document.getElementById('models-library');
-    
-    // Получаем параметры URL
+
     const urlParams = new URLSearchParams(window.location.search);
     gameId = urlParams.get('id') || 'game1';
-    
-    // Проверяем авторизацию
+
     const storedUser = localStorage.getItem('tublox_user');
-    if (!storedUser) { 
-        alert("Login required!"); 
-        window.location.href = 'login.html'; 
-        return;
+    if (!storedUser) {
+        // Fallback for dev/testing
+        currentUser = { username: "Guest" }; 
+    } else {
+        currentUser = JSON.parse(storedUser);
     }
-    currentUser = JSON.parse(storedUser);
-    
-    // Настраиваем кнопку сохранения
-    if (saveBtn) {
-        saveBtn.onclick = saveProject;
-    }
-    
-    // Инициализируем размеры и загружаем проект
+
+    if (saveBtn) saveBtn.onclick = saveProject;
+
     resize();
-    loadProject();
-    
-    // Устанавливаем начальное состояние
+    loadProject(); // Вызов загрузки проекта
     switchTab('build');
-    
-    // Устанавливаем активный инструмент
-    const partToolBtn = document.querySelector('.model-tool[onclick*="part"]');
-    if (partToolBtn) {
-        partToolBtn.classList.add('active');
-    }
-    
-    // Добавляем обработчики событий
+
     setupEventListeners();
+    renderModelLibrary();
 }
 
 // ==========================================
-//   EVENT LISTENERS
+// EVENT LISTENERS & RESIZE
 // ==========================================
-
 function setupEventListeners() {
-    // Обработчик изменения размера окна
     window.onresize = resize;
-    
-    // Обработчик контекстного меню
     if (canvas) {
         canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.onmousedown = handleMouseDown;
         canvas.oncontextmenu = e => e.preventDefault();
     }
-    
-    // Глобальные обработчики мыши
     window.onmousemove = handleMouseMove;
     window.onmouseup = handleMouseUp;
-    
-    // Клик вне контекстного меню
     window.addEventListener('click', () => {
-        if (contextMenu) {
-            contextMenu.style.display = 'none';
-        }
+        if (contextMenu) contextMenu.style.display = 'none';
         contextMenuObj = null;
     });
 }
 
-// ==========================================
-//   RESIZE HANDLING
-// ==========================================
-
 function resize() {
     if (!canvas) return;
-    
     const ws = document.querySelector('.workspace');
-    if(ws) {
-        canvas.width = ws.clientWidth - 300; 
-        canvas.height = ws.clientHeight;
+    const sb = document.querySelector('.sidebar');
+    
+    if (ws && sb) {
+        if (window.innerWidth <= 768) {
+            canvas.width = ws.clientWidth;
+            canvas.height = ws.clientHeight / 2;
+        } else {
+            canvas.width = ws.clientWidth - sb.offsetWidth;
+            canvas.height = ws.clientHeight;
+        }
     }
     render();
+    if (currentTab === 'models') renderModelPreview();
 }
 
 // ==========================================
-//   PROJECT LOADING/SAVING
+// PROJECT LOADING/SAVING (ORIGINAL LOGIC)
 // ==========================================
-
 async function loadProject() {
     try {
+        // Твой оригинальный fetch
         const res = await fetch(`/api/load_studio/${gameId}`);
+        if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
+        
         studioObjects = data.map || [];
         
-        // Миграция старых карт
+        // Migration/Sanity check logic
         studioObjects.forEach(obj => {
             if (obj.anchored === undefined) obj.anchored = true;
             if (obj.collide === undefined) obj.collide = true;
+            if (obj.transparency === undefined) obj.transparency = 0;
+            if (obj.scaleX === undefined) obj.scaleX = 1;
+            if (obj.scaleY === undefined) obj.scaleY = 1;
         });
-
+        
+        console.log("Project loaded:", studioObjects.length, "objects");
         render();
         updateExplorer();
-        loadModels();
-    } catch (e) { 
-        console.error('Error loading project:', e); 
+    } catch (e) {
+        console.error('Load error or new project:', e);
         studioObjects = [];
         render();
         updateExplorer();
-        loadModels();
     }
 }
 
 async function saveProject() {
+    const btnContent = saveBtn.innerHTML;
+    saveBtn.innerHTML = ICONS.spawn + " Saving...";
+    
     try {
         const res = await fetch('/api/save_game_data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                gameId, 
-                username: currentUser.username, 
+            body: JSON.stringify({
+                gameId,
+                username: currentUser.username,
                 map: studioObjects
             })
         });
-        
-        if (res.ok) {
-            alert('✅ Game saved to server!');
-        } else {
-            alert('❌ Save failed');
-        }
+        if (res.ok) alert('✅ Game saved!');
+        else alert('❌ Save failed');
     } catch (error) {
-        console.error('Save error:', error);
+        console.error(error);
         alert('❌ Error saving game');
     }
+    saveBtn.innerHTML = btnContent;
 }
 
 // ==========================================
-//   TAB MANAGEMENT
+// TABS & TOOLS
 // ==========================================
-
 function switchTab(tab) {
     currentTab = tab;
-    
-    if (saveBtn) {
-        saveBtn.textContent = tab === 'build' ? '💾 Save Game' : '💾 Save Model';
-        saveBtn.onclick = tab === 'build' ? saveProject : saveModel;
-    }
-    
-    // Скрываем все вкладки
-    document.querySelectorAll('.models-tab-content').forEach(function(t) {
-        t.classList.remove('active');
-    });
-    
-    // Показываем выбранную
+    const btnText = saveBtn.querySelector('.btn-text');
+    if(btnText) btnText.textContent = tab === 'build' ? 'Save' : 'Save Model';
+
+    document.querySelectorAll('.models-tab-content').forEach(t => t.classList.remove('active'));
     const tabElement = document.getElementById(tab + '-tab');
-    if (tabElement) {
-        tabElement.classList.add('active');
-    }
-    
-    if (tab === 'build') {
-        render();
-    } else if (tab === 'models') {
+    if (tabElement) tabElement.classList.add('active');
+
+    if (tab === 'build') render();
+    else if (tab === 'models') {
+        resize();
         renderModelPreview();
     }
 }
 
-// ==========================================
-//   BUILD TOOLS
-// ==========================================
-
-function addPart() {
-    const p = { 
-        id: Date.now(), 
-        type: 'part', 
-        x: -camX+100, y: -camY+100, w: 100, h: 40, 
-        color: '#95a5a6',
-        anchored: true,
-        collide: true
-    };
-    studioObjects.push(p);
-    selectedObj = p;
-    render();
-    updateExplorer();
-    showProperties();
+function setBuildTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.model-tool').forEach(btn => btn.classList.remove('active'));
+    
+    let targetBtn = event ? event.target : null;
+    while(targetBtn && !targetBtn.classList.contains('model-tool')) {
+        targetBtn = targetBtn.parentElement;
+    }
+    if (targetBtn) targetBtn.classList.add('active');
+    render(); // Перерисовать, чтобы показать/скрыть ручки
 }
 
-function addSpawn() {
-    const s = { 
-        id: Date.now(), 
-        type: 'spawn', 
-        x: -camX+100, y: -camY+100, w: 40, h: 60, 
-        color: '#00b894',
-        anchored: true,
-        collide: false
+// ==========================================
+// HELPER: SCALE HANDLES
+// ==========================================
+function getScaleHandles(obj) {
+    if (!obj) return null;
+    const s = 10; // Handle size
+    const hw = s / 2;
+    return {
+        nw: { x: obj.x - hw, y: obj.y - hw, w: s, h: s, cursor: 'nwse-resize' },
+        n:  { x: obj.x + obj.w/2 - hw, y: obj.y - hw, w: s, h: s, cursor: 'ns-resize' },
+        ne: { x: obj.x + obj.w - hw, y: obj.y - hw, w: s, h: s, cursor: 'nesw-resize' },
+        w:  { x: obj.x - hw, y: obj.y + obj.h/2 - hw, w: s, h: s, cursor: 'ew-resize' },
+        e:  { x: obj.x + obj.w - hw, y: obj.y + obj.h/2 - hw, w: s, h: s, cursor: 'ew-resize' },
+        sw: { x: obj.x - hw, y: obj.y + obj.h - hw, w: s, h: s, cursor: 'nesw-resize' },
+        s:  { x: obj.x + obj.w/2 - hw, y: obj.y + obj.h - hw, w: s, h: s, cursor: 'ns-resize' },
+        se: { x: obj.x + obj.w - hw, y: obj.y + obj.h - hw, w: s, h: s, cursor: 'nwse-resize' }
     };
-    studioObjects.push(s);
-    selectedObj = s;
-    render();
-    updateExplorer();
-    showProperties();
+}
+
+// ==========================================
+// OBJECT MANIPULATION
+// ==========================================
+function addPart(model) {
+    if (model) {
+        model.objects.forEach(objTemplate => {
+            const p = { ...objTemplate, id: Date.now() + Math.random(), x: -camX + 100, y: -camY + 100 };
+            studioObjects.push(p);
+            selectedObj = p;
+        });
+    } else {
+        const p = { id: Date.now(), type: 'part', x: -camX + 100, y: -camY + 100, w: 100, h: 40, color: '#95a5a6', anchored: true, collide: true, transparency: 0, scaleX: 1, scaleY: 1 };
+        studioObjects.push(p);
+        selectedObj = p;
+    }
+    render(); updateExplorer(); showProperties();
+}
+// Helper hooks for HTML onclick
+window.addPartDefault = () => addPart(null);
+
+function addSpawn() {
+    const p = { id: Date.now(), type: 'spawn', x: -camX + 150, y: -camY + 100, w: 40, h: 60, color: '#00b894', anchored: true, collide: false, transparency: 0 };
+    studioObjects.push(p);
+    selectedObj = p;
+    render(); updateExplorer(); showProperties();
 }
 
 function addText() {
-    const t = { 
-        id: Date.now(), 
-        type: 'text', 
-        x: -camX+100, y: -camY+100, w: 120, h: 40, 
-        color: '#3498db',
-        text: 'New Text',
-        textColor: '#ffffff',
-        font: 'Arial',
-        textSize: 20,
-        anchored: true,
-        collide: false
-    };
-    studioObjects.push(t);
-    selectedObj = t;
-    render();
-    updateExplorer();
-    showProperties();
-}
-
-function setBuildTool(tool) {
-    currentTool = tool;
-    
-    // Обновляем активные кнопки
-    const buttons = document.querySelectorAll('.model-tool');
-    buttons.forEach(function(btn) {
-        btn.classList.remove('active');
-    });
-    
-    // Находим нажатую кнопку
-    let targetBtn = event ? event.target : null;
-    if (!targetBtn && window.event) {
-        targetBtn = window.event.srcElement;
-    }
-    
-    if (targetBtn && targetBtn.classList.contains('model-tool')) {
-        targetBtn.classList.add('active');
-    }
+    const p = { id: Date.now(), type: 'text', x: -camX + 100, y: -camY + 150, w: 120, h: 40, color: '#3498db', text: 'Text', textColor: '#fff', textSize: 20, anchored: true, collide: false };
+    studioObjects.push(p);
+    selectedObj = p;
+    render(); updateExplorer(); showProperties();
 }
 
 function deleteObj() {
     const target = contextMenuObj || selectedObj;
-    if(!target) return;
-    
+    if (!target) return;
     studioObjects = studioObjects.filter(o => o !== target);
     selectedObj = null;
-    
-    if (contextMenu) {
-        contextMenu.style.display = 'none';
-    }
+    if (contextMenu) contextMenu.style.display = 'none';
     contextMenuObj = null;
-    
-    render();
-    updateExplorer();
-    showProperties();
+    render(); updateExplorer(); showProperties();
+}
+
+function duplicateObj() {
+    const target = contextMenuObj || selectedObj;
+    if (!target) return;
+    const dup = {...target, id: Date.now(), x: target.x + 20, y: target.y + 20};
+    studioObjects.push(dup);
+    selectedObj = dup;
+    if (contextMenu) contextMenu.style.display = 'none';
+    contextMenuObj = null;
+    render(); updateExplorer(); showProperties();
 }
 
 // ==========================================
-//   PROPERTIES PANEL
+// PROPERTIES PANEL
 // ==========================================
-
 function showProperties() {
     const p = document.getElementById('properties-panel');
     if (!p) return;
-    
-    if (!selectedObj) { 
-        p.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px;">Select an object or create one</p>'; 
-        return; 
+    if (!selectedObj) {
+        p.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px;">Select an object</p>';
+        return;
     }
+
+    let html = `
+    <label>Type: ${selectedObj.type.toUpperCase()}</label>
+    <label>Color</label>
+    <input type="color" value="${selectedObj.color || '#ffffff'}" oninput="updateObjectProperty('color', this.value)">
     
-    let propertiesHTML = `
-        <label>Type: ${selectedObj.type.toUpperCase()}</label>
-        
-        <label>Object Color</label>
-        <input type="color" value="${selectedObj.color || '#ffffff'}" oninput="updateObjectProperty('color', this.value)">
-        
-        <label>Dimensions (W x H)</label>
-        <div style="display:flex; gap:5px">
-            <input type="number" value="${selectedObj.w}" onchange="updateObjectProperty('w', this.value)">
-            <input type="number" value="${selectedObj.h}" onchange="updateObjectProperty('h', this.value)">
-        </div>
+    <label>Size (W x H)</label>
+    <div style="display:flex; gap:5px">
+        <input type="number" value="${selectedObj.w}" onchange="updateObjectProperty('w', this.value)">
+        <input type="number" value="${selectedObj.h}" onchange="updateObjectProperty('h', this.value)">
+    </div>
+    
+    <label>Position (X, Y)</label>
+    <div style="display:flex; gap:5px">
+        <input type="number" value="${selectedObj.x}" onchange="updateObjectProperty('x', this.value)">
+        <input type="number" value="${selectedObj.y}" onchange="updateObjectProperty('y', this.value)">
+    </div>
 
-        <label>Position (X, Y)</label>
-        <div style="display:flex; gap:5px">
-            <input type="number" value="${selectedObj.x}" onchange="updateObjectProperty('x', this.value)">
-            <input type="number" value="${selectedObj.y}" onchange="updateObjectProperty('y', this.value)">
-        </div>
+    <label>Transparency</label>
+    <input type="range" min="0" max="1" step="0.1" value="${selectedObj.transparency || 0}" oninput="updateObjectProperty('transparency', this.value)">
 
-        <hr style="border-color:#333; margin:15px 0;">
-        <label>Physics</label>
-
-        <!-- Anchored Toggle -->
-        <div class="prop-toggle-row">
-            <label for="p-anchored">Anchored</label>
-            <input type="checkbox" id="p-anchored" class="toggle-switch" 
-                ${selectedObj.anchored ? 'checked' : ''} 
-                onchange="updateObjectProperty('anchored', this.checked)">
-        </div>
-
-        <!-- Collide Toggle -->
-        <div class="prop-toggle-row">
-            <label for="p-collide">Can Collide</label>
-            <input type="checkbox" id="p-collide" class="toggle-switch" 
-                ${selectedObj.collide ? 'checked' : ''} 
-                onchange="updateObjectProperty('collide', this.checked)">
-        </div>
+    <div class="prop-toggle-row">
+        <label for="p-anchored" style="margin:0">Anchored</label>
+        <input type="checkbox" id="p-anchored" class="toggle-switch" ${selectedObj.anchored ? 'checked' : ''} onchange="updateObjectProperty('anchored', this.checked)">
+    </div>
+    <div class="prop-toggle-row">
+        <label for="p-collide" style="margin:0">Can Collide</label>
+        <input type="checkbox" id="p-collide" class="toggle-switch" ${selectedObj.collide ? 'checked' : ''} onchange="updateObjectProperty('collide', this.checked)">
+    </div>
     `;
-    
+
     if (selectedObj.type === 'text' || selectedObj.text) {
-        propertiesHTML += `
-            <hr style="border-color:#333; margin:15px 0;">
-            <label>Text Properties</label>
-            <input type="text" value="${selectedObj.text || ''}" placeholder="Text content" 
-                oninput="updateObjectProperty('text', this.value)">
-            
-            <label>Text Color</label>
-            <input type="color" value="${selectedObj.textColor || '#ffffff'}" 
-                oninput="updateObjectProperty('textColor', this.value)">
-            
-            <label>Font Size</label>
-            <input type="range" min="10" max="50" value="${selectedObj.textSize || 20}" 
-                oninput="updateObjectProperty('textSize', this.value)">
-            
-            <button onclick="openTextEditor()" style="margin-top:10px; width:100%;">✏️ Edit Text Font</button>
-        `;
+        html += `<hr style="border-color:#333; margin:10px 0;"> 
+        <label>Text Content</label> 
+        <input type="text" value="${selectedObj.text || ''}" oninput="updateObjectProperty('text', this.value)"> 
+        <label>Text Color</label> 
+        <input type="color" value="${selectedObj.textColor || '#ffffff'}" oninput="updateObjectProperty('textColor', this.value)"> 
+        <label>Text Size</label> 
+        <input type="range" min="10" max="100" value="${selectedObj.textSize || 20}" oninput="updateObjectProperty('textSize', this.value)"> 
+        <button class="btn-studio" onclick="openTextEditor()" style="margin-top:10px; width:100%; justify-content:center; display:flex; gap:5px; background:#444; color:white; padding:5px; border-radius:3px; border:none;">${ICONS.edit} Edit Font</button>`;
     }
-    
-    propertiesHTML += `
-        <hr style="border-color:#333; margin:15px 0;">
-        <button onclick="deleteObj()" style="background:var(--danger); margin-top:20px; width:100%;">🗑 Delete Object</button>
-    `;
-    
-    p.innerHTML = propertiesHTML;
+
+    html += `<hr style="border-color:#333; margin:15px 0;"> 
+    <button class="btn-studio" onclick="deleteObj()" style="background:var(--studio-danger); border:none; color:white; width:100%; justify-content:center; display:flex; gap:5px; padding:8px; border-radius:3px;">${ICONS.trash} Delete Object</button>`;
+    p.innerHTML = html;
 }
 
-function updateObjectProperty(property, value) {
+function updateObjectProperty(prop, val) {
     if (!selectedObj) return;
-    
-    if (property === 'w' || property === 'h' || property === 'x' || property === 'y' || property === 'textSize') {
-        selectedObj[property] = Number(value);
-    } else if (property === 'anchored' || property === 'collide') {
-        selectedObj[property] = Boolean(value);
-    } else {
-        selectedObj[property] = value;
-    }
-    
+    if (['w','h','x','y','textSize','transparency','scaleX','scaleY'].includes(prop)) selectedObj[prop] = Number(val);
+    else if (['anchored','collide'].includes(prop)) selectedObj[prop] = Boolean(val);
+    else selectedObj[prop] = val;
     render();
 }
 
 // ==========================================
-//   CONTEXT MENU HANDLING
+// EXPLORER LIST
 // ==========================================
+function updateExplorer() {
+    const list = document.getElementById('explorer-list');
+    if (!list) return;
+    list.innerHTML = '';
 
+    if (studioObjects.length === 0) {
+        list.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px; font-size:0.8rem;">Empty map</p>';
+        return;
+    }
+
+    [...studioObjects].reverse().forEach(obj => {
+        const div = document.createElement('div');
+        div.className = `obj-item ${selectedObj === obj ? 'selected' : ''}`;
+        
+        let icon = ICONS.part;
+        if (obj.type === 'spawn') icon = ICONS.spawn;
+        if (obj.type === 'text') icon = ICONS.text;
+
+        div.innerHTML = `${icon} <span>${obj.type} <span style="opacity:0.5">#${obj.id.toString().slice(-3)}</span></span>`;
+        
+        div.onclick = () => {
+            selectedObj = obj;
+            showProperties();
+            render();
+            updateExplorer();
+        };
+        list.appendChild(div);
+    });
+}
+
+// ==========================================
+// CANVAS INTERACTION & RENDERING
+// ==========================================
 function handleContextMenu(e) {
     e.preventDefault();
     const mx = e.offsetX - camX;
@@ -422,58 +410,67 @@ function handleContextMenu(e) {
     if (hit) {
         contextMenuObj = hit;
         selectedObj = hit;
+        if (textBtn) textBtn.innerHTML = (hit.text && hit.text.length > 0) 
+            ? `${ICONS.edit} Edit Text` 
+            : `${ICONS.edit} Add Text`;
         
-        if (textBtn) {
-            if (hit.text && hit.text.length > 0) {
-                textBtn.innerText = "✏️ Edit Text";
-            } else {
-                textBtn.innerText = "📝 Add Text";
-            }
-        }
-
         if (contextMenu) {
             contextMenu.style.display = 'flex';
-            contextMenu.style.left = e.clientX + 'px';
-            contextMenu.style.top = e.clientY + 'px';
+            let left = e.clientX;
+            let top = e.clientY;
+            if (left + 200 > window.innerWidth) left = window.innerWidth - 200;
+            contextMenu.style.left = left + 'px';
+            contextMenu.style.top = top + 'px';
         }
-        
         showProperties();
         render();
     } else {
-        if (contextMenu) {
-            contextMenu.style.display = 'none';
-        }
+        if (contextMenu) contextMenu.style.display = 'none';
         contextMenuObj = null;
     }
 }
 
-// ==========================================
-//   MOUSE HANDLING
-// ==========================================
-
 function handleMouseDown(e) {
     if (e.button === 0) {
-        if (contextMenu) {
-            contextMenu.style.display = 'none';
-        }
+        if (contextMenu) contextMenu.style.display = 'none';
         contextMenuObj = null;
     }
-    
-    if (e.button === 2) { 
-        isPanning = true; 
-        startX = e.offsetX; 
-        startY = e.offsetY; 
-        return; 
+    if (e.button === 2) {
+        isPanning = true;
+        startX = e.offsetX;
+        startY = e.offsetY;
+        return;
     }
-    
-    const mx = e.offsetX - camX; 
+
+    const mx = e.offsetX - camX;
     const my = e.offsetY - camY;
-    
-    // Проверка на перетаскивание существующего объекта
+
+    // === SCALE LOGIC ===
+    if (currentTool === 'scale' && selectedObj) {
+        const handles = getScaleHandles(selectedObj);
+        for (let key in handles) {
+            const h = handles[key];
+            if (mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h) {
+                isResizing = true;
+                resizeHandle = key;
+                resizeStart = {
+                    x: selectedObj.x,
+                    y: selectedObj.y,
+                    w: selectedObj.w,
+                    h: selectedObj.h,
+                    mx: mx,
+                    my: my
+                };
+                return; 
+            }
+        }
+    }
+    // ===================
+
     const hit = studioObjects.slice().reverse().find(o => 
         mx > o.x && mx < o.x + o.w && my > o.y && my < o.y + o.h
     );
-    
+
     if (hit) {
         selectedObj = hit;
         isDragging = true;
@@ -482,61 +479,31 @@ function handleMouseDown(e) {
         showProperties();
         updateExplorer();
         render();
-        return;
-    }
-    
-    // Создание нового объекта
-    if (!hit) {
-        let newObj;
-        switch(currentTool) {
-            case 'part':
-                newObj = { 
-                    id: Date.now(), 
-                    type: 'part', 
-                    x: Math.round(mx/10)*10, 
-                    y: Math.round(my/10)*10, 
-                    w: 100, h: 40, 
-                    color: '#95a5a6',
-                    anchored: true,
-                    collide: true
-                };
-                break;
-            case 'spawn':
-                newObj = { 
-                    id: Date.now(), 
-                    type: 'spawn', 
-                    x: Math.round(mx/10)*10, 
-                    y: Math.round(my/10)*10, 
-                    w: 40, h: 60, 
-                    color: '#00b894',
-                    anchored: true,
-                    collide: false
-                };
-                break;
-            case 'text':
-                newObj = { 
-                    id: Date.now(), 
-                    type: 'text', 
-                    x: Math.round(mx/10)*10, 
-                    y: Math.round(my/10)*10, 
-                    w: 120, h: 40, 
-                    color: '#3498db',
-                    text: 'Text',
-                    textColor: '#ffffff',
-                    font: 'Arial',
-                    textSize: 20,
-                    anchored: true,
-                    collide: false
-                };
-                break;
-        }
-        
-        if (newObj) {
-            studioObjects.push(newObj);
-            selectedObj = newObj;
-            isDragging = true;
-            startX = mx - newObj.x;
-            startY = my - newObj.y;
+    } else {
+        // Create Logic
+        if (['part','spawn','text'].includes(currentTool)) {
+            let newObj;
+            const gridSnap = (val) => Math.round(val/10)*10;
+            const gx = gridSnap(mx);
+            const gy = gridSnap(my);
+            const id = Date.now();
+
+            if (currentTool === 'part') newObj = { id, type: 'part', x: gx, y: gy, w: 100, h: 40, color: '#95a5a6', anchored: true, collide: true, transparency: 0 };
+            else if (currentTool === 'spawn') newObj = { id, type: 'spawn', x: gx, y: gy, w: 40, h: 60, color: '#00b894', anchored: true, collide: false, transparency: 0 };
+            else if (currentTool === 'text') newObj = { id, type: 'text', x: gx, y: gy, w: 120, h: 40, color: '#3498db', text: 'Text', textColor: '#fff', textSize: 20, anchored: true, collide: false };
+
+            if (newObj) {
+                studioObjects.push(newObj);
+                selectedObj = newObj;
+                isDragging = true;
+                startX = mx - newObj.x;
+                startY = my - newObj.y;
+                showProperties();
+                updateExplorer();
+                render();
+            }
+        } else {
+            selectedObj = null; // Deselect
             showProperties();
             updateExplorer();
             render();
@@ -545,54 +512,94 @@ function handleMouseDown(e) {
 }
 
 function handleMouseMove(e) {
-    if(isPanning) { 
-        camX += e.movementX; 
-        camY += e.movementY; 
-        render(); 
+    const mx = e.offsetX - camX;
+    const my = e.offsetY - camY;
+
+    // Cursor for Scale
+    if (currentTool === 'scale' && selectedObj && !isDragging && !isResizing) {
+        const handles = getScaleHandles(selectedObj);
+        let hover = false;
+        for (let key in handles) {
+            const h = handles[key];
+            if (mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h) {
+                canvas.style.cursor = h.cursor;
+                hover = true;
+            }
+        }
+        if (!hover) canvas.style.cursor = isPanning ? 'grabbing' : 'default';
+    } else {
+        canvas.style.cursor = isPanning ? 'grabbing' : 'default';
     }
-    
-    if(isDragging && selectedObj) {
-        const mx = e.offsetX - camX; 
-        const my = e.offsetY - camY;
-        
+
+    if (isPanning) {
+        camX += e.movementX;
+        camY += e.movementY;
+        render();
+        return;
+    }
+
+    // === RESIZING ===
+    if (isResizing && selectedObj) {
+        const dx = Math.round((mx - resizeStart.mx) / 10) * 10;
+        const dy = Math.round((my - resizeStart.my) / 10) * 10;
+        const minSize = 10;
+
+        if (resizeHandle.includes('e')) selectedObj.w = Math.max(minSize, resizeStart.w + dx);
+        if (resizeHandle.includes('w')) {
+            const newW = resizeStart.w - dx;
+            if (newW >= minSize) {
+                selectedObj.x = resizeStart.x + dx;
+                selectedObj.w = newW;
+            }
+        }
+        if (resizeHandle.includes('s')) selectedObj.h = Math.max(minSize, resizeStart.h + dy);
+        if (resizeHandle.includes('n')) {
+            const newH = resizeStart.h - dy;
+            if (newH >= minSize) {
+                selectedObj.y = resizeStart.y + dy;
+                selectedObj.h = newH;
+            }
+        }
+        showProperties();
+        render();
+        return;
+    }
+
+    if (isDragging && selectedObj) {
         selectedObj.x = Math.round((mx - startX)/10)*10;
         selectedObj.y = Math.round((my - startY)/10)*10;
-        
+        showProperties();
         render();
     }
 }
 
-function handleMouseUp() { 
-    isPanning = false; 
-    isDragging = false; 
+function handleMouseUp() {
+    isPanning = false;
+    isDragging = false;
+    isResizing = false;
+    resizeHandle = null;
+    if(canvas) canvas.style.cursor = 'default';
 }
 
 // ==========================================
-//   TEXT EDITOR
+// TEXT EDITOR
 // ==========================================
-
 function openTextEditor() {
-    if (!contextMenuObj && !selectedObj) return;
     const obj = contextMenuObj || selectedObj;
+    if (!obj) return;
     if (textInput) textInput.value = obj.text || "";
     if (fontSelect) fontSelect.value = obj.font || "Arial";
     updateFontPreview();
     if (modal) modal.style.display = 'flex';
-    
-    if (contextMenu) {
-        contextMenu.style.display = 'none';
-    }
-    contextMenuObj = null;
+    if (contextMenu) contextMenu.style.display = 'none';
 }
 
-function closeTextModal() { 
-    if (modal) modal.style.display = 'none'; 
-}
+function closeTextModal() { if (modal) modal.style.display = 'none'; }
 
 function updateFontPreview() {
     if (fontPreview && fontSelect) {
         fontPreview.style.fontFamily = fontSelect.value;
-        fontPreview.innerText = (textInput && textInput.value) ? textInput.value : "Preview Text";
+        fontPreview.innerText = (textInput && textInput.value) ? textInput.value : "Preview";
     }
 }
 
@@ -601,360 +608,156 @@ function applyText() {
     if (obj && textInput && fontSelect) {
         obj.text = textInput.value;
         obj.font = fontSelect.value;
-        if (!obj.textSize) obj.textSize = 20;
-        if (!obj.textColor) obj.textColor = '#ffffff';
     }
-    closeTextModal(); 
-    render(); 
+    closeTextModal();
+    render();
     showProperties();
 }
 
 // ==========================================
-//   RENDERING
+// RENDER LOOP
 // ==========================================
-
-function updateExplorer() {
-    const list = document.getElementById('explorer-list');
-    if(!list) return;
-    list.innerHTML = '';
-    
-    if (studioObjects.length === 0) {
-        list.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px;">No objects yet. Click to add.</p>';
-        return;
-    }
-    
-    studioObjects.forEach(obj => {
-        const div = document.createElement('div');
-        div.className = `obj-item ${selectedObj === obj ? 'selected' : ''}`;
-        
-        let icon = '◻';
-        if (obj.type === 'spawn') icon = '🚀';
-        if (obj.type === 'text') icon = '📝';
-        
-        div.innerHTML = `
-            <span style="font-size: 0.875rem; color: var(--studio-text-dim);">${icon}</span>
-            <span>${obj.type.toUpperCase()} #${obj.id.toString().slice(-4)}</span>
-        `;
-        
-        div.onclick = () => { 
-            selectedObj = obj; 
-            showProperties(); 
-            render(); 
-            updateExplorer(); 
-        };
-        list.appendChild(div);
-    });
-}
-
 function render() {
     if (!ctx || !canvas) return;
-    
+
+    // Clear
     ctx.fillStyle = '#1e1e1e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     ctx.save();
     ctx.translate(camX, camY);
-    
-    // Сетка
-    ctx.strokeStyle = '#2a2a2a'; 
-    ctx.lineWidth = 1; 
+
+    // Grid
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    for(let i=-2000; i<2000; i+=50) { 
-        ctx.moveTo(i, -2000); 
-        ctx.lineTo(i, 2000); 
-    }
-    for(let i=-2000; i<2000; i+=50) { 
-        ctx.moveTo(-2000, i); 
-        ctx.lineTo(2000, i); 
+    for (let i = -2000; i < 3000; i += 50) {
+        ctx.moveTo(i, -2000); ctx.lineTo(i, 3000);
+        ctx.moveTo(-2000, i); ctx.lineTo(3000, i);
     }
     ctx.stroke();
 
+    // Objects
     studioObjects.forEach(obj => {
-        // Прозрачность
-        if (obj.collide === false) {
-            ctx.globalAlpha = 0.5;
-        } else {
-            ctx.globalAlpha = 1.0;
-        }
-
+        ctx.save();
+        ctx.globalAlpha = 1 - (obj.transparency || 0);
+        if (obj.collide === false) ctx.globalAlpha *= 0.6;
+        
         ctx.fillStyle = obj.color;
         ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
         
-        // Индикация для Unanchored
         if (obj.anchored === false) {
             ctx.strokeStyle = '#ff7675';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(obj.x + 2, obj.y + 2, obj.w - 4, obj.h - 4);
+            ctx.strokeRect(obj.x+2, obj.y+2, obj.w-4, obj.h-4);
         }
-
-        if(obj.text) {
+        
+        if (obj.text) {
             ctx.fillStyle = obj.textColor || 'white';
-            const fontName = obj.font || 'Arial';
-            const size = obj.textSize || 20;
-            ctx.font = `bold ${size}px "${fontName}"`;
-            ctx.textAlign = 'center'; 
+            ctx.font = `bold ${obj.textSize || 20}px "${obj.font || 'Arial'}"`;
+            ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(obj.text, obj.x + obj.w/2, obj.y + obj.h/2);
         }
         
-        if(selectedObj === obj) {
-            ctx.strokeStyle = '#00cec9'; 
+        if (selectedObj === obj) {
+            ctx.strokeStyle = '#00cec9';
             ctx.lineWidth = 2;
             ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-            ctx.fillStyle = 'white'; 
-            const s = 6;
-            ctx.fillRect(obj.x+obj.w-s, obj.y+obj.h-s, s*2, s*2);
         }
+        ctx.restore();
     });
+
+    // === DRAW SCALE HANDLES ===
+    if (currentTool === 'scale' && selectedObj) {
+        const handles = getScaleHandles(selectedObj);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        
+        for (let key in handles) {
+            const h = handles[key];
+            ctx.beginPath();
+            ctx.arc(h.x + h.w/2, h.y + h.h/2, h.w/2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+    // ==========================
 
     ctx.restore();
 }
 
 // ==========================================
-//   TuModels FUNCTIONS
+// MODEL LIBRARY UI
 // ==========================================
-
-function newModel() {
-    if (!currentUser) return;
-    
-    currentModel = {
-        id: 'model_' + Date.now(),
-        name: 'New Model',
-        objects: [],
-        createdAt: new Date().toISOString(),
-        author: currentUser.username
-    };
-    
-    // Переключаемся на создание модели
-    switchTab('models');
-    renderModelPreview();
-    updateModelStats();
-}
-
-function importModel() {
-    alert('Import from JSON coming soon!');
-}
-
-function exportCurrentModel() {
-    if (!currentModel) {
-        alert('No model selected!');
-        return;
-    }
-    
-    const dataStr = JSON.stringify(currentModel, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    const exportFileDefaultName = currentModel.name + '.tumodel';
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-}
-
-function saveModel() {
-    if (!currentModel) {
-        alert('Create or select a model first!');
-        return;
-    }
-    
-    // Сохраняем текущие объекты в модель
-    if (currentTab === 'build') {
-        currentModel.objects = JSON.parse(JSON.stringify(studioObjects));
-    }
-    
-    // Проверяем, есть ли уже такая модель
-    const existingIndex = modelsLibrary.findIndex(function(m) {
-        return m.id === currentModel.id;
-    });
-    
-    if (existingIndex >= 0) {
-        modelsLibrary[existingIndex] = Object.assign({}, currentModel);
-    } else {
-        modelsLibrary.push(Object.assign({}, currentModel));
-    }
-    
-    // Сохраняем в localStorage
-    localStorage.setItem('tumodels_library', JSON.stringify(modelsLibrary));
-    
-    renderModelLibrary();
-    alert('Model saved to library!');
-}
-
-function loadModels() {
-    const saved = localStorage.getItem('tumodels_library');
-    if (saved) {
-        try {
-            modelsLibrary = JSON.parse(saved);
-            renderModelLibrary();
-        } catch(e) {
-            console.error('Error loading models:', e);
-            modelsLibrary = [];
-        }
-    }
-}
-
 function renderModelLibrary() {
     if (!modelsLibraryEl) return;
-    
     if (modelsLibrary.length === 0) {
-        modelsLibraryEl.innerHTML = '<div class="empty-library"><div style="font-size: 32px; margin-bottom: 10px;">📦</div><h4>No Models Yet</h4><p style="font-size: 0.75rem;">Create your first model!</p></div>';
+        modelsLibraryEl.innerHTML = '<div style="color:#666; font-size:12px; grid-column:1/-1; text-align:center;">No models</div>';
         return;
     }
-    
     modelsLibraryEl.innerHTML = '';
-    modelsLibrary.forEach(function(model) {
-        const modelEl = document.createElement('div');
-        modelEl.className = 'model-item';
-        if (selectedModel && selectedModel.id === model.id) {
-            modelEl.classList.add('active');
-        }
-        modelEl.innerHTML = '<div class="model-icon">📦</div><div class="model-name">' + model.name + '</div>';
-        
-        modelEl.onclick = function() {
+    modelsLibrary.forEach(model => {
+        const el = document.createElement('div');
+        el.className = 'model-item';
+        el.innerHTML = `<div style="margin-bottom:5px;">${ICONS.box}</div><div style="font-size:11px;">${model.name}</div>`;
+        el.onclick = () => {
             selectedModel = model;
-            currentModel = Object.assign({}, model);
+            currentModel = model;
+            addPart(model);
             renderModelLibrary();
             renderModelPreview();
-            updateModelStats();
         };
-        
-        modelsLibraryEl.appendChild(modelEl);
+        modelsLibraryEl.appendChild(el);
     });
 }
 
 function renderModelPreview() {
-    const previewEl = document.querySelector('.model-preview');
-    if (!previewEl) return;
-    
-    const emptyEl = previewEl.querySelector('.preview-empty');
     if (!modelPreviewCanvas || !modelPreviewCtx) return;
+    // Fix zero size issues
+    const w = modelPreviewCanvas.parentElement.clientWidth || 300;
+    const h = 150;
+    modelPreviewCanvas.width = w;
+    modelPreviewCanvas.height = h;
     
-    if (!currentModel || !currentModel.objects || currentModel.objects.length === 0) {
-        modelPreviewCanvas.style.display = 'none';
-        if (emptyEl) {
-            emptyEl.style.display = 'block';
-            emptyEl.innerHTML = '<div style="font-size: 24px; margin-bottom: 10px;">👁️</div>' + 
-                (selectedModel ? 'Selected model is empty' : 'Select a model to preview');
-        }
-        return;
-    }
-    
-    modelPreviewCanvas.style.display = 'block';
-    if (emptyEl) emptyEl.style.display = 'none';
-    
-    // Настройка канваса
-    modelPreviewCanvas.width = previewEl.clientWidth;
-    modelPreviewCanvas.height = previewEl.clientHeight;
-    
-    // Очистка
-    modelPreviewCtx.fillStyle = '#0f0f18';
-    modelPreviewCtx.fillRect(0, 0, modelPreviewCanvas.width, modelPreviewCanvas.height);
-    
-    // Расчет масштаба и позиции
-    const objects = currentModel.objects;
+    modelPreviewCtx.clearRect(0,0,w,h);
+    modelPreviewCtx.fillStyle = '#1a1a26';
+    modelPreviewCtx.fillRect(0,0,w,h);
+
+    if (!selectedModel) return;
+    const objs = selectedModel.objects;
+    if(!objs || !objs.length) return;
+
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    objects.forEach(function(obj) {
-        if (obj.x < minX) minX = obj.x;
-        if (obj.y < minY) minY = obj.y;
-        if (obj.x + obj.w > maxX) maxX = obj.x + obj.w;
-        if (obj.y + obj.h > maxY) maxY = obj.y + obj.h;
+    objs.forEach(o => {
+        if(o.x < minX) minX = o.x;
+        if(o.y < minY) minY = o.y;
+        if(o.x+o.w > maxX) maxX = o.x+o.w;
+        if(o.y+o.h > maxY) maxY = o.y+o.h;
     });
-    
-    const modelWidth = maxX - minX;
-    const modelHeight = maxY - minY;
-    const padding = 20;
-    
-    const scale = Math.min(
-        (modelPreviewCanvas.width - padding * 2) / modelWidth,
-        (modelPreviewCanvas.height - padding * 2) / modelHeight,
-        1
-    );
-    
-    const offsetX = (modelPreviewCanvas.width - modelWidth * scale) / 2;
-    const offsetY = (modelPreviewCanvas.height - modelHeight * scale) / 2;
-    
-    // Рендеринг объектов
+
+    const mw = maxX - minX;
+    const mh = maxY - minY;
+    const scale = Math.min((w-40)/mw, (h-40)/mh);
+    const ox = (w - mw*scale)/2;
+    const oy = (h - mh*scale)/2;
+
     modelPreviewCtx.save();
-    modelPreviewCtx.translate(offsetX, offsetY);
+    modelPreviewCtx.translate(ox, oy);
     modelPreviewCtx.scale(scale, scale);
     modelPreviewCtx.translate(-minX, -minY);
-    
-    objects.forEach(function(obj) {
-        modelPreviewCtx.fillStyle = obj.color || '#95a5a6';
+
+    objs.forEach(obj => {
+        modelPreviewCtx.fillStyle = obj.color;
         modelPreviewCtx.fillRect(obj.x, obj.y, obj.w, obj.h);
-        
-        if (obj.text) {
-            modelPreviewCtx.fillStyle = obj.textColor || 'white';
-            const fontName = obj.font || 'Arial';
-            const size = (obj.textSize || 20) * scale;
-            modelPreviewCtx.font = 'bold ' + size + 'px "' + fontName + '"';
-            modelPreviewCtx.textAlign = 'center';
-            modelPreviewCtx.textBaseline = 'middle';
-            modelPreviewCtx.fillText(obj.text, obj.x + obj.w/2, obj.y + obj.h/2);
-        }
     });
-    
     modelPreviewCtx.restore();
+
+    const pc = document.getElementById('parts-count');
+    const sv = document.getElementById('size-value');
+    if(pc) pc.innerText = objs.length;
+    if(sv) sv.innerText = `${Math.round(mw)}x${Math.round(mh)}`;
 }
 
-function updateModelStats() {
-    const partsCountEl = document.getElementById('parts-count');
-    const sizeValueEl = document.getElementById('size-value');
-    
-    if (!partsCountEl || !sizeValueEl) return;
-    
-    if (!currentModel) {
-        partsCountEl.textContent = '0';
-        sizeValueEl.textContent = '0x0';
-        return;
-    }
-    
-    const objects = currentModel.objects || [];
-    partsCountEl.textContent = objects.length;
-    
-    if (objects.length > 0) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        
-        objects.forEach(function(obj) {
-            if (obj.x < minX) minX = obj.x;
-            if (obj.y < minY) minY = obj.y;
-            if (obj.x + obj.w > maxX) maxX = obj.x + obj.w;
-            if (obj.y + obj.h > maxY) maxY = obj.y + obj.h;
-        });
-        
-        const width = Math.round(maxX - minX);
-        const height = Math.round(maxY - minY);
-        sizeValueEl.textContent = width + 'x' + height;
-    } else {
-        sizeValueEl.textContent = '0x0';
-    }
-}
-
-// ==========================================
-//   GLOBAL EXPORTS
-// ==========================================
-
-// Экспортируем функции в глобальную область видимости
-window.switchTab = switchTab;
-window.setBuildTool = setBuildTool;
-window.newModel = newModel;
-window.importModel = importModel;
-window.exportCurrentModel = exportCurrentModel;
-window.saveModel = saveModel;
-window.openTextEditor = openTextEditor;
-window.closeTextModal = closeTextModal;
-window.updateFontPreview = updateFontPreview;
-window.applyText = applyText;
-window.deleteObj = deleteObj;
-window.updateObjectProperty = updateObjectProperty;
-
-// ==========================================
-//   START APPLICATION
-// ==========================================
-
-// Запускаем инициализацию после загрузки DOM
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initStudio);
-} else {
-    initStudio();
-}
+// Boot
+document.addEventListener('DOMContentLoaded', initStudio);
