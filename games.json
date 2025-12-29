@@ -125,5 +125,114 @@
         "transparency": 0
       }
     ]
+  },
+  "g_80brh56k3": {
+    "id": "g_80brh56k3",
+    "author": "Today_AIDK",
+    "name": "test",
+    "visits": 9,
+    "map": [
+      {
+        "id": 1767011148633,
+        "type": "part",
+        "x": 50,
+        "y": 450,
+        "w": 100,
+        "h": 130,
+        "color": "#95a5a6",
+        "anchored": true,
+        "collide": true,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      {
+        "id": 1767011151298,
+        "type": "spawn",
+        "x": 80,
+        "y": 360,
+        "w": 40,
+        "h": 60,
+        "color": "#00b894",
+        "anchored": true,
+        "collide": false,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      {
+        "id": 1767011190553,
+        "type": "part",
+        "x": 80,
+        "y": 540,
+        "w": 300,
+        "h": 40,
+        "color": "#95a5a6",
+        "anchored": true,
+        "collide": true,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      {
+        "id": 1767011300946,
+        "type": "part",
+        "x": 200,
+        "y": 0,
+        "w": 100,
+        "h": 40,
+        "color": "#95a5a6",
+        "anchored": true,
+        "collide": true,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      {
+        "id": 1767011302571,
+        "type": "part",
+        "x": 230,
+        "y": 40,
+        "w": 100,
+        "h": 40,
+        "color": "#95a5a6",
+        "anchored": true,
+        "collide": true,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      {
+        "id": 1767011303970,
+        "type": "part",
+        "x": 160,
+        "y": 100,
+        "w": 100,
+        "h": 40,
+        "color": "#95a5a6",
+        "anchored": true,
+        "collide": true,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      },
+      {
+        "type": "part",
+        "x": 280,
+        "y": 520,
+        "w": 40,
+        "h": 15,
+        "color": "#2d3436",
+        "anchored": true,
+        "collide": false,
+        "special": "flashlight",
+        "text": "Flashlight",
+        "textSize": 12,
+        "id": 1767012188609.28,
+        "transparency": 0,
+        "scaleX": 1,
+        "scaleY": 1
+      }
+    ]
   }
 }

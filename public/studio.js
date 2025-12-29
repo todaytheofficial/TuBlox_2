@@ -30,21 +30,65 @@ const ICONS = {
 // TuModels state
 let currentTool = 'part';
 let currentTab = 'build';
+// === Вставь это в studio.js вместо старого modelsLibrary ===
 let modelsLibrary = [
+    // --- SECTION: BLOCKS ---
     {
         id: 'kill_part',
+        category: 'Blocks',
         name: 'Kill Part',
         objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#ff0000', anchored: true, collide: true, special: 'kill', transparency: 0 }]
     },
     {
-        id: 'teleport_part_1',
-        name: 'Teleport Part 1',
-        objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#0000ff', anchored: true, collide: true, special: 'teleport', target: 'teleport_part_2', transparency: 0 }]
+        id: 'speed_pad',
+        category: 'Blocks',
+        name: 'Speed Pad',
+        objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#f1c40f', anchored: true, collide: false, special: 'speed_up', customSpeed: 16, text: 'Speed+', textSize: 14, textColor: '#000000', transparency: 0.2 }]
     },
     {
-        id: 'teleport_part_2',
-        name: 'Teleport Part 2',
-        objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#0000ff', anchored: true, collide: true, special: 'teleport', target: 'teleport_part_1', transparency: 0 }]
+        id: 'jump_pad',
+        category: 'Blocks',
+        name: 'Jump Pad',
+        objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#2ecc71', anchored: true, collide: false, special: 'jump_boost', customJump: 30, text: 'Jump+', textSize: 14, textColor: '#000000', transparency: 0.2 }]
+    },
+    {
+        id: 'big_player',
+        category: 'Blocks',
+        name: 'Big Player',
+        objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 80, color: '#9b59b6', anchored: true, collide: false, special: 'big_player', customScale: 2, text: 'BIG', textSize: 20, transparency: 0.3 }]
+    },
+    {
+        id: 'small_player',
+        category: 'Blocks',
+        name: 'Small Player',
+        objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 50, color: '#00cec9', anchored: true, collide: false, special: 'small_player', customScale: 0.5, text: 'Small', textSize: 15, transparency: 0.3 }]
+    },
+    {
+        id: 'teleport_set',
+        category: 'Blocks',
+        name: 'Teleporters',
+        objects: [
+            { type: 'part', x: 0, y: 0, w: 80, h: 10, color: '#3498db', anchored: true, collide: false, special: 'teleport', target: 'tp_out', text: 'In', transparency: 0.2 },
+            { type: 'part', x: 150, y: 0, w: 80, h: 10, color: '#e74c3c', anchored: true, collide: false, special: 'teleport', target: 'tp_in', id: 'tp_out', text: 'Out', transparency: 0.2 }
+        ]
+    },
+    
+    // --- SECTION: ITEMS (НОВЫЙ РАЗДЕЛ) ---
+    {
+        id: 'tool_flashlight',
+        category: 'Items', // Категория предметы
+        name: 'Flashlight',
+        objects: [{ 
+            type: 'part', 
+            x: 0, y: 0, 
+            w: 40, h: 15, 
+            color: '#2d3436', 
+            anchored: true, // В игре он должен висеть, пока не возьмешь
+            collide: false, // Сквозь него проходим, чтобы взять
+            special: 'flashlight', 
+            text: 'Flashlight', 
+            textSize: 12 
+        }]
     }
 ];
 
@@ -100,6 +144,7 @@ function initStudio() {
     setupEventListeners();
     renderModelLibrary();
 }
+
 
 // ==========================================
 // EVENT LISTENERS & RESIZE
@@ -338,6 +383,24 @@ function showProperties() {
     </div>
     `;
 
+    // --- НОВЫЙ БЛОК ДЛЯ СПЕЦИАЛЬНЫХ СВОЙСТВ ---
+    if (selectedObj.special === 'speed_up') {
+        html += `<hr style="border-color:#333; margin:10px 0;">
+        <label style="color:#f1c40f">Speed Power (Def: 6)</label>
+        <input type="number" value="${selectedObj.customSpeed || 16}" onchange="updateObjectProperty('customSpeed', this.value)">`;
+    }
+    if (selectedObj.special === 'jump_boost') {
+        html += `<hr style="border-color:#333; margin:10px 0;">
+        <label style="color:#2ecc71">Jump Power (Def: 15)</label>
+        <input type="number" value="${selectedObj.customJump || 30}" onchange="updateObjectProperty('customJump', this.value)">`;
+    }
+    if (selectedObj.special === 'big_player' || selectedObj.special === 'small_player') {
+        html += `<hr style="border-color:#333; margin:10px 0;">
+        <label style="color:#9b59b6">Scale Factor (Def: 1)</label>
+        <input type="number" step="0.1" value="${selectedObj.customScale || 1}" onchange="updateObjectProperty('customScale', this.value)">`;
+    }
+    // ------------------------------------------
+
     if (selectedObj.type === 'text' || selectedObj.text) {
         html += `<hr style="border-color:#333; margin:10px 0;"> 
         <label>Text Content</label> 
@@ -354,9 +417,13 @@ function showProperties() {
     p.innerHTML = html;
 }
 
+
 function updateObjectProperty(prop, val) {
     if (!selectedObj) return;
-    if (['w','h','x','y','textSize','transparency','scaleX','scaleY'].includes(prop)) selectedObj[prop] = Number(val);
+    // Добавили customSpeed, customJump, customScale в список чисел
+    if (['w','h','x','y','textSize','transparency','scaleX','scaleY', 'customSpeed', 'customJump', 'customScale'].includes(prop)) {
+        selectedObj[prop] = Number(val);
+    }
     else if (['anchored','collide'].includes(prop)) selectedObj[prop] = Boolean(val);
     else selectedObj[prop] = val;
     render();
@@ -690,26 +757,52 @@ function render() {
 // ==========================================
 // MODEL LIBRARY UI
 // ==========================================
+// === ЗАМЕНИ ФУНКЦИЮ renderModelLibrary НА ЭТУ ===
 function renderModelLibrary() {
     if (!modelsLibraryEl) return;
+    modelsLibraryEl.innerHTML = '';
+    
     if (modelsLibrary.length === 0) {
-        modelsLibraryEl.innerHTML = '<div style="color:#666; font-size:12px; grid-column:1/-1; text-align:center;">No models</div>';
+        modelsLibraryEl.innerHTML = '<div style="color:#666; font-size:12px;">No models</div>';
         return;
     }
-    modelsLibraryEl.innerHTML = '';
+
+    // Группируем модели по категориям
+    const categories = {};
     modelsLibrary.forEach(model => {
-        const el = document.createElement('div');
-        el.className = 'model-item';
-        el.innerHTML = `<div style="margin-bottom:5px;">${ICONS.box}</div><div style="font-size:11px;">${model.name}</div>`;
-        el.onclick = () => {
-            selectedModel = model;
-            currentModel = model;
-            addPart(model);
-            renderModelLibrary();
-            renderModelPreview();
-        };
-        modelsLibraryEl.appendChild(el);
+        const cat = model.category || 'Misc';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(model);
     });
+
+    // Отрисовываем
+    for (const [catName, models] of Object.entries(categories)) {
+        // Заголовок категории
+        const header = document.createElement('div');
+        header.style.gridColumn = '1 / -1';
+        header.style.color = '#888';
+        header.style.fontSize = '11px';
+        header.style.fontWeight = 'bold';
+        header.style.marginTop = '10px';
+        header.style.marginBottom = '5px';
+        header.style.textTransform = 'uppercase';
+        header.innerText = catName;
+        modelsLibraryEl.appendChild(header);
+
+        // Модели этой категории
+        models.forEach(model => {
+            const el = document.createElement('div');
+            el.className = 'model-item';
+            el.innerHTML = `<div style="margin-bottom:5px; font-size:20px;">${model.objects[0].text || ICONS.box}</div><div style="font-size:10px;">${model.name}</div>`;
+            el.onclick = () => {
+                selectedModel = model;
+                currentModel = model;
+                addPart(model);
+                renderModelPreview();
+            };
+            modelsLibraryEl.appendChild(el);
+        });
+    }
 }
 
 function renderModelPreview() {

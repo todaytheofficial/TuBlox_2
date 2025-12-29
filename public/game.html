@@ -16,6 +16,63 @@
             display: flex; flex-direction: column;
             pointer-events: none; z-index: 100;
         }
+        /* --- INVENTORY / HOTBAR --- */
+.hotbar-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    border-radius: 10px;
+    backdrop-filter: blur(4px);
+    z-index: 90; /* Ниже чата, но выше канваса */
+    pointer-events: auto;
+}
+
+.slot {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    position: relative;
+    transition: 0.1s;
+    cursor: pointer;
+}
+
+.slot.selected {
+    border-color: #f1c40f;
+    background: rgba(241, 196, 15, 0.2);
+    transform: scale(1.1);
+}
+
+.slot-number {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.item-active-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background: #2ecc71;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #2ecc71;
+    display: none;
+}
         .chat-messages {
             flex: 1; overflow-y: auto; background: rgba(0, 0, 0, 0.5); 
             border-radius: 8px; padding: 5px; margin-bottom: 5px;
@@ -73,6 +130,19 @@
     <button class="menu-btn" onclick="openMenu()">
         <svg viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9M12 4.15L6.04 7.5 12 10.85l5.96-3.35L12 4.15M5 15.91l6 3.38v-6.71L5 9.21v6.7m14 0v-6.7l-6 3.38v6.71l6-3.38z"/></svg>
     </button>
+
+    <div class="hotbar-container" id="hotbar">
+    <!-- Слоты будут генерироваться через JS -->
+    <div class="slot selected">
+        <span class="slot-number">1</span>
+    </div>
+    <div class="slot">
+        <span class="slot-number">2</span>
+    </div>
+    <div class="slot">
+        <span class="slot-number">3</span>
+    </div>
+</div>
 
     <div id="game-menu" class="game-menu-overlay">
         <div class="menu-box">
