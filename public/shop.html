@@ -9,12 +9,11 @@
     <header>
         <div class="header-right">
             <button onclick="location.href='index.html'" class="btn-icon">
-                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <div class="logo">SHOP</div>
         </div>
         
-        <!-- Vubs Badge in Header -->
         <div class="vubs-badge">
             <img src="assets/vubs.png" class="vubs-icon-img" alt="V">
             <span class="vubs-amount" id="user-balance">...</span>
@@ -22,52 +21,66 @@
     </header>
 
     <main>
-        <div class="shop-grid" id="shop-grid">
-            <!-- Items injected by JS -->
+        <div class="shop-tabs">
+            <button class="tab-btn active" onclick="switchTab('hat', this)">Accessories</button>
+            <button class="tab-btn" onclick="switchTab('face', this)">Faces</button>
+            <button class="tab-btn" onclick="switchTab('shirt', this)">Shirts</button>
+            <button class="tab-btn" onclick="switchTab('pants', this)">Pants</button>
         </div>
+
+        <div class="shop-grid" id="shop-grid"></div>
     </main>
 
     <script src="js/utils.js"></script>
     <script>
-        const user = JSON.parse(localStorage.getItem('tublox_user'));
-        if(!user) location.href = 'login.html';
+        let currentTab = 'hat';
+        let currentUser = JSON.parse(localStorage.getItem('tublox_user'));
 
-        // Fetch fresh data
-        fetch('/api/profile', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username: user.username })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.success) {
-                renderShop(data.user);
-                localStorage.setItem('tublox_user', JSON.stringify(data.user));
-            }
-        });
+        if(!currentUser) location.href = 'login.html';
 
-        function renderShop(u) {
+        function loadData() {
+            fetch('/api/profile', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: currentUser.username })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('tublox_user', JSON.stringify(data.user));
+                    renderShop();
+                }
+            });
+        }
+
+        function switchTab(tab, btn) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderShop();
+        }
+
+        function renderShop() {
+            const u = currentUser;
             document.getElementById('user-balance').innerText = u.balance;
             const grid = document.getElementById('shop-grid');
             grid.innerHTML = '';
 
             for (let itemId in window.GAME_ASSETS) {
                 const item = window.GAME_ASSETS[itemId];
-                
-                if (item.price === 0) continue; // Skip default items
+                if (item.type !== currentTab || item.price === 0) continue;
 
                 const owned = u.inventory.includes(itemId);
-                const iconSVG = getItemSVG(itemId);
-
                 const card = document.createElement('div');
                 card.className = 'shop-card';
                 card.innerHTML = `
-                    <div class="item-icon" style="width:80px; height:80px; margin:0 auto;">${iconSVG}</div>
+                    <div class="item-icon">${getItemSVG(itemId)}</div>
                     <h4>${item.name}</h4>
-                    <p style="display:flex; align-items:center; justify-content:center; gap:5px; color:#ffeaa7; font-weight:bold;">
-                        <img src="Assets/vubs.png" style="width:20px;height:20px; vertical-align:middle;"> ${item.price}
+                    <p class="price-tag">
+                        <img src="assets/vubs.png" style="width:20px;"> ${item.price}
                     </p>
-                    <button class="btn-primary btn-shop" onclick="buy('${itemId}', ${item.price})" ${owned ? 'disabled style="opacity:0.5; cursor:default;"' : ''}>
+                    <button class="btn-primary btn-shop" onclick="buy('${itemId}', ${item.price})" ${owned ? 'disabled style="opacity:0.5;"' : ''}>
                         ${owned ? 'OWNED' : 'BUY'}
                     </button>
                 `;
@@ -79,12 +92,14 @@
             fetch('/api/buy', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username: user.username, itemId: id, price })
+                body: JSON.stringify({ username: currentUser.username, itemId: id, price })
             }).then(res => res.json()).then(data => {
-                if(data.success) location.reload();
+                if(data.success) loadData();
                 else alert(data.error);
             });
         }
+
+        loadData();
     </script>
 </body>
 </html>

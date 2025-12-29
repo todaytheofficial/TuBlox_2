@@ -16,7 +16,6 @@
     </header>
 
     <div class="profile-layout">
-        <!-- PLAYER CARD -->
         <div class="profile-card">
             <div class="big-avatar-container" id="p-avatar-svg"></div>
             <h2 id="p-name">Loading...</h2>
@@ -24,10 +23,9 @@
             
             <div class="stat-row">
                 <div class="stat-item">
-                    <!-- Vubs Badge -->
-                    <div class="vubs-badge">
+                    <div class="vubs-badge" style="box-shadow:none; border:none; background:none; padding:0;">
                         <img src="assets/vubs.png" class="vubs-icon-img" alt="V">
-                        <span class="vubs-amount" id="p-balance">0</span>
+                        <span class="vubs-amount" id="p-balance" style="font-size:22px;">0</span>
                     </div>
                     <label style="margin-top:5px;">Balance</label>
                 </div>
@@ -46,7 +44,6 @@
             </div>
         </div>
 
-        <!-- INVENTORY -->
         <div class="inventory-section">
             <h3 id="inv-title">Inventory</h3>
             <div id="inventory-grid" class="shop-grid"></div>
@@ -56,109 +53,115 @@
     <script src="js/auth.js"></script>
     <script src="js/utils.js"></script>
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const targetId = params.get('uid');
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('uid');
 
-        async function initProfile() {
-            const me = await getSession(); 
-            let profileUser = null;
-            let isMyProfile = false;
+      async function initProfile() {
+          const me = await getSession(); 
+          let profileUser = null;
+          let isMyProfile = false;
 
-            if (targetId && me && targetId != me.id) {
-                isMyProfile = false;
-                const res = await fetch('/api/get_user_by_id', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: targetId })
-                });
-                const data = await res.json();
-                if(data.success) profileUser = data.user;
-            } else if (me) {
-                isMyProfile = true;
-                profileUser = me;
-            } else if (targetId) {
-                const res = await fetch('/api/get_user_by_id', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: targetId })
-                });
-                const data = await res.json();
-                if(data.success) profileUser = data.user;
-            }
+          if (targetId) {
+              const res = await fetch('/api/get_user_by_id', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({ id: targetId })
+              });
+              const data = await res.json();
+              if(data.success) {
+                  profileUser = data.user;
+                  isMyProfile = (me && me.id == profileUser.id);
+              }
+          } else if (me) {
+              isMyProfile = true;
+              profileUser = me;
+          }
 
-            if (!profileUser) {
-                alert("Profile not found.");
-                window.location.href = 'index.html';
-                return;
-            }
+          if (!profileUser) {
+              alert("Profile not found.");
+              window.location.href = 'index.html';
+              return;
+          }
 
-            renderProfile(profileUser, isMyProfile);
-        }
+          renderProfile(profileUser, isMyProfile);
+      }
 
-        function renderProfile(user, isOwner) {
-            document.getElementById('p-name').textContent = user.username;
-            document.getElementById('p-id').textContent = `ID: #${user.id}`;
-            document.getElementById('p-balance').textContent = user.balance;
-            document.getElementById('p-date').textContent = new Date(user.createdAt || Date.now()).getFullYear();
-            document.getElementById('p-avatar-svg').innerHTML = getAvatarSVG(user);
+      function renderProfile(user, isOwner) {
+          document.getElementById('p-name').textContent = user.username;
+          document.getElementById('p-id').textContent = `ID: #${user.id}`;
+          document.getElementById('p-balance').textContent = user.balance;
+          document.getElementById('p-date').textContent = new Date(user.createdAt || Date.now()).getFullYear();
+          document.getElementById('p-avatar-svg').innerHTML = getAvatarSVG(user);
 
-            const controls = document.getElementById('profile-controls');
-            if (isOwner) {
-                controls.innerHTML = `
-                    <button class="btn-primary" onclick="window.location.href='shop.html'">Go to Shop</button>
-                    <button class="btn-primary" style="background: var(--danger); box-shadow: 0 6px 0 #d63031;" onclick="logout()">Log Out</button>
-                `;
-            } else {
-                controls.innerHTML = `<div style="color:#888; font-weight:bold; padding:10px;">Viewing User Profile</div>`;
-                document.getElementById('inv-title').textContent = `${user.username}'s Inventory`;
-            }
+          const controls = document.getElementById('profile-controls');
+          if (isOwner) {
+              controls.innerHTML = `
+                  <button class="btn-primary" onclick="window.location.href='shop.html'">Go to Shop</button>
+                  <button class="btn-primary" style="background: var(--danger); box-shadow: 0 6px 0 #d63031;" onclick="logout()">Log Out</button>
+              `;
+          } else {
+              controls.innerHTML = `<div style="color:#888; font-weight:bold; padding:10px;">Viewing User Profile</div>`;
+              document.getElementById('inv-title').textContent = `${user.username}'s Inventory`;
+          }
 
-            const grid = document.getElementById('inventory-grid');
-            grid.innerHTML = '';
-            const itemsToShow = isOwner ? ['none', ...user.inventory] : user.inventory;
+          const grid = document.getElementById('inventory-grid');
+          grid.innerHTML = '';
+          
+          const itemsToShow = isOwner ? ['none', 'none_shirt', 'none_pants', ...user.inventory] : user.inventory;
 
-            itemsToShow.forEach(itemId => {
-                const isEquipped = (user.equipped.hat === itemId) || (user.equipped.face === itemId);
-                const itemData = window.GAME_ASSETS[itemId] || { name: itemId, type: 'unknown' };
-                const iconSVG = getItemSVG(itemId);
+          itemsToShow.forEach(itemId => {
+              const itemData = window.GAME_ASSETS[itemId] || { name: itemId, type: 'unknown' };
+              const isEquipped = (user.equipped.hat === itemId || user.equipped.face === itemId || user.equipped.shirt === itemId || user.equipped.pants === itemId);
+              const iconSVG = getItemSVG(itemId);
 
-                const card = document.createElement('div');
-                card.className = `item-card ${isEquipped ? 'equipped' : ''}`;
-                card.innerHTML = `
-                    <div class="item-icon" style="width:60px; height:60px; margin:0 auto;">${iconSVG}</div>
-                    <div style="font-weight:bold; font-size:14px; margin-top:5px;">${itemData.name}</div>
-                    <div style="font-size:10px; color:#888;">${itemData.type ? itemData.type.toUpperCase() : ''}</div>
-                `;
-                
-                if (isOwner) card.onclick = () => equipItemLocal(itemId, itemData.type, user.username);
-                grid.appendChild(card);
-            });
-        }
+              const card = document.createElement('div');
+              card.className = `item-card ${isEquipped ? 'equipped' : ''}`;
+              card.innerHTML = `
+                  <div class="item-icon" style="width:60px; height:60px; margin:0 auto;">${iconSVG}</div>
+                  <div style="font-weight:bold; font-size:14px; margin-top:5px;">${itemData.name}</div>
+                  <div style="font-size:10px; color:#888;">${itemData.type ? itemData.type.toUpperCase() : ''}</div>
+              `;
+              
+              if (isOwner) {
+                  card.onclick = () => equipItemLocal(itemId, itemData.type, user.username);
+              }
+              grid.appendChild(card);
+          });
+      }
 
-        async function equipItemLocal(id, type, username) {
-            if(!type) return;
-            if(id === 'none') type = 'hat'; 
-            await fetch('/api/equip', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username, type, itemId: id })
-            });
-            location.reload();
-        }
+      async function equipItemLocal(id, type, username) {
+          if(!type) return;
+          let targetType = type;
+          if (id === 'none') targetType = 'hat';
+          if (id === 'none_shirt') targetType = 'shirt';
+          if (id === 'none_pants') targetType = 'pants';
 
-        function copyProfileLink() {
-            const idText = document.getElementById('p-id').textContent.replace('ID: #', '');
-            const url = `${window.location.origin}${window.location.pathname}?uid=${idText}`;
-            navigator.clipboard.writeText(url).then(() => alert(`Profile Link Copied!\n${url}`));
-        }
+          const res = await fetch('/api/equip', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ username, type: targetType, itemId: id })
+          });
+          
+          const data = await res.json();
+          if(data.success) {
+              localStorage.setItem('tublox_user', JSON.stringify(data.user));
+              location.reload();
+          }
+      }
 
-        function logout() {
-            localStorage.removeItem('tublox_user');
-            localStorage.removeItem('tublox_uid');
-            window.location.href = 'login.html';
-        }
+      function copyProfileLink() {
+          const idText = document.getElementById('p-id').textContent.replace('ID: #', '');
+          const url = `${window.location.origin}${window.location.pathname}?uid=${idText}`;
+          navigator.clipboard.writeText(url).then(() => alert(`Profile Link Copied!`));
+      }
 
-        initProfile();
+      function logout() {
+          localStorage.removeItem('tublox_user');
+          localStorage.removeItem('tublox_uid');
+          window.location.href = 'login.html';
+      }
+
+      initProfile();
     </script>
 </body>
 </html>

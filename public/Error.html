@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuBlox Studio - Временно недоступно</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .error-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            background: linear-gradient(135deg, #0a0a12 0%, #1a1a2e 100%);
+        }
+        
+        .error-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 3rem;
+            max-width: 600px;
+            text-align: center;
+            border: 2px solid var(--primary);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .error-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+        
+        .error-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 2rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .error-title {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .error-message {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+        }
+        
+        .countdown {
+            background: rgba(108, 92, 231, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-l);
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .countdown-title {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            font-family: var(--font-head);
+        }
+        
+        .timer-unit {
+            background: var(--bg-dark);
+            border-radius: var(--radius-m);
+            padding: 1rem;
+            min-width: 80px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .timer-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        
+        .timer-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--input-bg);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            width: 65%;
+            border-radius: 5px;
+            animation: progress 3s ease-in-out infinite;
+        }
+        
+        @keyframes progress {
+            0%, 100% { transform: translateX(-5%); }
+            50% { transform: translateX(5%); }
+        }
+        
+        .features-list {
+            text-align: left;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-m);
+            border-left: 4px solid var(--accent);
+        }
+        
+        .features-list h3 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .features-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features-list li {
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .features-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-home {
+            background: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: var(--radius-m);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-home:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(108, 92, 231, 0.3);
+        }
+        
+        .btn-status {
+            background: var(--input-bg);
+            color: var(--text-main);
+            padding: 1rem 2rem;
+            border-radius: var(--radius-m);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-status:hover {
+            background: var(--card-bg);
+            transform: translateY(-3px);
+        }
+        
+        .btn-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .social-updates {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .social-updates h3 {
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .social-icons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .social-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--input-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .social-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        
+        .social-icon:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+        }
+        
+        @media (max-width: 768px) {
+            .error-card {
+                padding: 2rem;
+                margin: 1rem;
+            }
+            
+            .error-title {
+                font-size: 2rem;
+            }
+            
+            .error-message {
+                font-size: 1rem;
+            }
+            
+            .timer-unit {
+                min-width: 60px;
+                padding: 0.8rem;
+            }
+            
+            .timer-value {
+                font-size: 1.5rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn-home, .btn-status {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-icon">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="10" width="80" height="80" rx="10" fill="#6C5CE7" fill-opacity="0.2" stroke="#6C5CE7" stroke-width="3"/>
+                    <path d="M30,35 L70,35 L70,65 L30,65 Z" fill="none" stroke="#6C5CE7" stroke-width="4"/>
+                    <path d="M40,45 L60,45 M40,55 L60,55" stroke="#6C5CE7" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M35,40 L45,30 M65,40 L55,30" stroke="#FF6B6B" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="35" cy="30" r="2" fill="#FF6B6B"/>
+                    <circle cx="65" cy="30" r="2" fill="#FF6B6B"/>
+                    <path d="M45,20 L55,20" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            
+            <h1 class="error-title">Studio временно недоступна</h1>
+            
+            <div class="error-message">
+                <p><strong>Здравствуйте!</strong></p>
+                <p>Извините за неработающую Studio. Студия переделывается, и в скором обновлении мы дадим полную рабочую студию.</p>
+                <p>Мы полностью перерабатываем редактор, чтобы сделать его еще удобнее, быстрее и функциональнее!</p>
+            </div>
+            
+            <div class="countdown">
+                <div class="countdown-title">Ожидаемое время запуска:</div>
+                <div class="countdown-timer">
+                    <div class="timer-unit">
+                        <div class="timer-value" id="days">14</div>
+                        <div class="timer-label">Дней</div>
+                    </div>
+                    <div class="timer-unit">
+                        <div class="timer-value" id="hours">06</div>
+                        <div class="timer-label">Часов</div>
+                    </div>
+                    <div class="timer-unit">
+                        <div class="timer-value" id="minutes">30</div>
+                        <div class="timer-label">Минут</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            
+            <div class="features-list">
+                <h3>Что мы улучшаем:</h3>
+                <ul>
+                    <li>Новый интерфейс редактора</li>
+                    <li>Улучшенная система моделей (TuModels)</li>
+                    <li>Более стабильная работа</li>
+                    <li>Новые инструменты для строительства</li>
+                    <li>Улучшенная физика объектов</li>
+                    <li>Быстрая загрузка проектов</li>
+                </ul>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="index.html" class="btn-home">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="white">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                    Вернуться на главную
+                </a>
+                <a href="#" class="btn-status" onclick="showUpdateStatus()">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                    </svg>
+                    Проверить статус
+                </a>
+            </div>
+            
+            <div class="social-updates">
+                <h3>Следите за обновлениями:</h3>
+                <div class="social-icons">
+                    <a href="https://t.me/todaychannell_idk" class="social-icon" title="Telegram">
+    <svg viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19c-.14.75-.42 1-.68 1.03c-.58.05-1.02-.38-1.58-.75c-.88-.58-1.38-.94-2.23-1.5c-.99-.65-.35-1.01.22-1.59c.15-.15 2.71-2.48 2.76-2.69c.01-.03.01-.06-.01-.09c-.02-.03-.05-.04-.08-.03c-.34.07-2.3 1.5-2.59 1.66c-.35.19-.67.28-.97.28c-.33 0-.89-.18-1.34-.33c-.54-.18-1.04-.28-1-.59c.02-.16.24-.33.66-.51c2.56-1.12 4.26-1.87 5.06-2.24c2.24-.89 2.7-.66 3 .62c.17.72.15 3.76.22 4.19z"/>
+    </svg>
+</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Обновление счетчика
+        function updateCountdown() {
+            // Устанавливаем дату релиза (например, через 14 дней)
+            const releaseDate = new Date();
+            releaseDate.setDate(releaseDate.getDate() + 0);
+            releaseDate.setHours(18, 0, 0, 0); // 18:00
+            
+            const now = new Date();
+            const diff = releaseDate - now;
+            
+            if (diff > 0) {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                
+                document.getElementById('days').textContent = days.toString().padStart(2, '0');
+                document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+                document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+            } else {
+                document.querySelector('.countdown-title').textContent = 'Скоро будет готово!';
+                document.querySelector('.countdown-timer').style.display = 'none';
+            }
+        }
+        
+        // Обновляем каждую минуту
+        updateCountdown();
+        setInterval(updateCountdown, 60000);
+        
+        // Показ статуса обновления
+        function showUpdateStatus() {
+            alert('Статус обновления:\n\n✅ Новая система моделей - готово\n🎨 Дизайн интерфейса - в работе\n🔧 Оптимизация кода - в работе\n🧪 Тестирование - на очереди\n\nТекущий прогресс: 65%');
+            return false;
+        }
+        
+        // Анимация прогресс-бара
+        const progressFill = document.querySelector('.progress-fill');
+        let progress = 65;
+        let direction = 1;
+        
+        function animateProgress() {
+            progress += direction * 0.5;
+            
+            if (progress >= 70) direction = -1;
+            if (progress <= 60) direction = 1;
+            
+            progressFill.style.width = progress + '%';
+            requestAnimationFrame(animateProgress);
+        }
+        
+        animateProgress();
+        
+        // Анимация иконок соцсетей
+        document.querySelectorAll('.social-icon').forEach(icon => {
+            icon.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.1)';
+            });
+            
+            icon.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+        
+        // Добавляем эффект печатания для заголовка
+        const title = document.querySelector('.error-title');
+        const originalText = title.textContent;
+        title.textContent = '';
+        
+        let i = 0;
+        function typeWriter() {
+            if (i < originalText.length) {
+                title.textContent += originalText.charAt(i);
+                i++;
+                setTimeout(typeWriter, 50);
+            }
+        }
+        
+        // Запускаем эффект через 1 секунду после загрузки
+        setTimeout(typeWriter, 1000);
+        
+        // Анимация SVG иконки
+        const errorIcon = document.querySelector('.error-icon svg');
+        errorIcon.style.opacity = '0';
+        
+        setTimeout(() => {
+            errorIcon.style.transition = 'opacity 1s ease';
+            errorIcon.style.opacity = '1';
+            
+            // Анимация элементов внутри SVG
+            const paths = errorIcon.querySelectorAll('path, rect, circle');
+            paths.forEach((path, index) => {
+                path.style.strokeDasharray = path.getTotalLength();
+                path.style.strokeDashoffset = path.getTotalLength();
+                path.style.animation = `draw 1s ease forwards ${index * 0.2}s`;
+            });
+        }, 500);
+        
+        // Добавляем стили для анимации рисования
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes draw {
+                to {
+                    stroke-dashoffset: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

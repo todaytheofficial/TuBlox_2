@@ -15,6 +15,9 @@ let particles = [];
 let cameraX = 0;
 let cameraY = 0;
 
+// Ссылка на ассеты
+const ASSETS_DB = window.GAME_ASSETS || {};
+
 // --- 1. АВТОРИЗАЦИЯ ---
 const storedUser = localStorage.getItem('tublox_user');
 if (!storedUser) { window.location.href = 'login.html'; }
@@ -32,14 +35,21 @@ socket.on('init_game', (data) => {
     
     if (data.map && data.map.length > 0) {
         platforms = data.map.map(p => ({
-            ...p, // Это самое важное: копирует text, textColor и textSize
+            ...p,
             x: Number(p.x),
             y: Number(p.y),
             w: Number(p.w),
-            h: Number(p.h)
+            h: Number(p.h),
+            anchored: (p.anchored !== undefined) ? p.anchored : true,
+            collide: (p.collide !== undefined) ? p.collide : true,
+            text: p.text || "",
+            textSize: p.textSize || 20,
+            textColor: p.textColor || "#ffffff",
+            font: p.font || "Arial",
+            dy: 0 // Вертикальная скорость для физики падения
         }));
     } else {
-        platforms = [{ x: -1000, y: 600, w: 5000, h: 100, color: '#1e1e29', type: 'baseplate' }];
+        platforms = [{ x: -1000, y: 600, w: 5000, h: 100, color: '#1e1e29', type: 'baseplate', collide: true, anchored: true }];
     }
     respawnPlayer();
 });
@@ -59,7 +69,7 @@ socket.on('player_leave', (id) => { delete players[id]; });
 socket.on('player_died_anim', (id) => {
     if (players[id]) {
         players[id].dead = true;
-        createExplosion(players[id].x + 15, players[id].y + 30, players[id].color);
+        createExplosion(players[id].x + 15, players[id].y + 30, players[id].color || '#fff');
     }
 });
 
@@ -73,7 +83,7 @@ socket.on('player_respawned', (data) => {
     }
 });
 
-// --- 3. ФИЗИКА (БЕЗ ПРОВАЛИВАНИЙ) ---
+// --- 3. ФИЗИКА ---
 function respawnPlayer() {
     if (!me) return;
     const spawn = platforms.find(p => p.type === 'spawn') || { x: 100, y: 500, w: 30 };
@@ -93,55 +103,132 @@ function die() {
     }, 2000);
 }
 
+// Проверка пересечения двух прямоугольников
+function checkCollision(rect1, rect2) {
+    return (
+        rect1.x < rect2.x + rect2.w &&
+        rect1.x + rect1.w > rect2.x &&
+        rect1.y < rect2.y + rect2.h &&
+        rect1.y + rect1.h > rect2.y
+    );
+}
+
 function updatePhysics() {
+    // === 1. ФИЗИКА ПРЕДМЕТОВ (ROBLOX STYLE) ===
+    platforms.forEach(obj => {
+        // Если предмет закреплен (Anchored), он не двигается
+        if (obj.anchored) return;
+
+        // Применяем гравитацию
+        obj.dy = (obj.dy || 0) + 0.5;
+        let nextY = obj.y + obj.dy;
+
+        // Если у падающего предмета Collide = false, он пролетает сквозь всё
+        if (obj.collide === false) {
+            obj.y = nextY;
+            return; // Дальше проверки не нужны, он призрак
+        }
+
+        // Если Collide = true, проверяем столкновения с другими объектами
+        let landed = false;
+        
+        // Проверяем все остальные платформы
+        for (let other of platforms) {
+            if (obj === other) continue; // Не проверять себя
+            
+            // Если "пол" призрачный (Collide = false), сквозь него пролетаем
+            if (other.collide === false) continue; 
+
+            // Проверка по горизонтали (находимся ли мы над объектом)
+            if (obj.x < other.x + other.w && obj.x + obj.w > other.x) {
+                // Проверка по вертикали (были ли мы выше и станем ли ниже/внутри)
+                if (obj.y + obj.h <= other.y + 10 && nextY + obj.h >= other.y) {
+                    obj.y = other.y - obj.h; // Ставим ровно сверху
+                    obj.dy = 0; // Останавливаем падение
+                    landed = true;
+                    break; // Нашли пол, хватит искать
+                }
+            }
+        }
+
+        // Если не приземлились, применяем движение вниз
+        if (!landed) {
+            obj.y = nextY;
+        }
+
+        // Удаление если упал в бездну (оптимизация)
+        if (obj.y > WORLD_FLOOR_LIMIT + 500) {
+            obj.anchored = true; // Замораживаем, чтобы не считать физику зря
+            obj.dy = 0;
+        }
+    });
+
+
+    // === 2. ФИЗИКА ИГРОКА ===
     if (!me || me.dead) return;
 
     let moved = false;
     me.isMoving = false;
 
     // Горизонтальное движение
-    if (inputs.left) { me.x -= 6; me.direction = -1; me.isMoving = true; moved = true; }
-    if (inputs.right) { me.x += 6; me.direction = 1; me.isMoving = true; moved = true; }
-    
-    // Гравитация
+    let dx = 0;
+    if (inputs.left) { dx = -6; me.direction = -1; me.isMoving = true; }
+    if (inputs.right) { dx = 6; me.direction = 1; me.isMoving = true; }
+
+    if (dx !== 0) {
+        me.x += dx;
+        moved = true;
+        
+        // Хитбокс X
+        const playerHitboxX = { x: me.x + 5, y: me.y, w: 20, h: 60 };
+        
+        platforms.forEach(p => {
+            if (!p.collide) return; // Проход сквозь призрачные блоки
+            if (checkCollision(playerHitboxX, p)) {
+                if (dx > 0) me.x = p.x - 25;
+                else if (dx < 0) me.x = p.x + p.w - 5;
+            }
+        });
+    }
+
+    // Вертикальное движение
     me.dy = (me.dy || 0) + 0.8;
-    let nextY = me.y + me.dy;
-    
-    let wasGrounded = me.grounded;
-    me.grounded = false; 
+    me.y += me.dy;
 
-    // Логика коллизий (AABB с предсказанием)
-    
+    const wasGrounded = me.grounded;
+    me.grounded = false;
+
+    // Хитбокс Y
+    const playerHitboxY = { x: me.x + 5, y: me.y, w: 20, h: 60 };
+
     platforms.forEach(p => {
-        const pLeft = me.x + 5;
-        const pRight = me.x + 25;
-        const pBottom = me.y + 60;
-        const nextBottom = nextY + 60;
+        if (!p.collide) return; // Проход сквозь призрачные блоки
 
-        // Если игрок находится в пределах ширины платформы
-        if (pRight > p.x && pLeft < p.x + p.w) {
-            // Проверка: был ли игрок выше платформы и станет ли ниже/внутри нее
-            if (pBottom <= p.y + 2 && nextBottom >= p.y && me.dy >= 0) {
-                nextY = p.y - 60; 
-                me.dy = 0; 
-                me.grounded = true;
+        if (checkCollision(playerHitboxY, p)) {
+            // Падение вниз
+            if (me.dy > 0) {
+                if (me.y - me.dy + 60 <= p.y + 15) { // +15 допуск для больших скоростей
+                    me.y = p.y - 60;
+                    me.dy = 0;
+                    me.grounded = true;
+                }
+            } 
+            // Удар головой
+            else if (me.dy < 0) {
+                me.y = p.y + p.h;
+                me.dy = 0;
             }
         }
     });
 
-    me.y = nextY;
-
-    // Прыжок
     if (inputs.jump && me.grounded) { 
         me.dy = -15; 
         me.grounded = false; 
         moved = true; 
     }
 
-    // Падение в бездну
     if (me.y > WORLD_FLOOR_LIMIT) die();
 
-    // Отправка данных на сервер
     if (moved || me.dy !== 0 || me.grounded !== wasGrounded) {
         socket.emit('player_input', { 
             x: Math.round(me.x), 
@@ -153,8 +240,23 @@ function updatePhysics() {
     }
 }
 
-// --- ОБНОВЛЕННАЯ ОТРИСОВКА С АКСЕССУАРАМИ (ФИКС) ---
-const svgCache = {}; // Кэш для изображений, чтобы не пересоздавать их каждый кадр
+
+// --- 4. ОТРИСОВКА ---
+const svgCache = {};
+
+function getAsset(p, type) {
+    let itemId = 'none';
+    if (p.equipped && p.equipped[type]) itemId = p.equipped[type];
+    else if (p[type]) itemId = p[type];
+
+    if (!itemId || itemId === 'none') {
+        if (type === 'face') itemId = 'face_smile';
+        if (type === 'shirt') itemId = 'none_shirt';
+        if (type === 'pants') itemId = 'none_pants';
+        if (type === 'hat') itemId = 'none';
+    }
+    return ASSETS_DB[itemId] || { svg: '', color: null };
+}
 
 function drawAvatar(ctx, p) {
     if (!p || p.dead) return;
@@ -165,7 +267,6 @@ function drawAvatar(ctx, p) {
 
     let legAngle = 0;
     let armAngle = 0;
-
     if (!p.grounded) {
         armAngle = (p.dy < 0) ? -2.8 : -2.5; 
         legAngle = 0.5; 
@@ -175,69 +276,57 @@ function drawAvatar(ctx, p) {
         armAngle = walkCycle * 0.6; 
     }
 
-    const skin = '#ffccaa';
+    const SKIN_COLOR = '#ffccaa';
+    const pantsData = getAsset(p, 'pants');
+    const shirtData = getAsset(p, 'shirt');
+    const faceData = getAsset(p, 'face');
+    const hatData = getAsset(p, 'hat');
 
-    // 1. Ноги
-    ctx.fillStyle = '#222';
+    const pantsColor = pantsData.color || '#2d3436';
+    const shirtColor = shirtData.color || p.color || '#6c5ce7';
+
+    // Ноги
+    ctx.fillStyle = pantsColor;
     ctx.save(); ctx.translate(0, -25); ctx.rotate(p.grounded ? -legAngle : -0.2); ctx.fillRect(-6, 0, 12, 25); ctx.restore();
     ctx.save(); ctx.translate(0, -25); ctx.rotate(p.grounded ? legAngle : 0.4); ctx.fillRect(-6, 0, 12, 25); ctx.restore();
 
-    // 2. Тело
-    ctx.fillStyle = p.color || '#6c5ce7';
+    // Тело
+    ctx.fillStyle = shirtColor;
     ctx.fillRect(-11, -55, 22, 30);
+    if (shirtData.svg) drawSvgComponent(ctx, shirtData.svg, -11, -55, 22, 30);
 
-    // 3. Руки
-    ctx.fillStyle = skin;
+    // Руки
+    ctx.fillStyle = SKIN_COLOR;
     ctx.save(); ctx.translate(0, -45); ctx.rotate(armAngle); ctx.fillRect(-6, 0, 12, 22); ctx.restore(); 
 
-    // 4. Голова (база)
-    ctx.beginPath(); 
-    ctx.fillStyle = skin;
-    ctx.roundRect(-12, -80, 24, 25, 6); 
-    ctx.fill();
+    // Голова
+    ctx.beginPath(); ctx.fillStyle = SKIN_COLOR; ctx.roundRect(-12, -80, 24, 25, 6); ctx.fill();
 
-    // --- ОТРИСОВКА АКСЕССУАРОВ (УВЕЛИЧЕННЫХ) ---
-    
-    // Лицо: рисуем на всю площадь головы (24x25)
-    const faceKey = p.face || 'face_smile';
-    const assetFace = GAME_ASSETS[faceKey];
-    if (assetFace && assetFace.svg) {
-        // x: -12, y: -80, w: 24, h: 25
-        drawSvgComponent(ctx, assetFace.svg, -12, -80, 32, 30);
-    }
+    // Лицо
+    if (faceData.svg) drawSvgComponent(ctx, faceData.svg, -12, -80, 24, 25);
 
-    // Шапка/Корона: рисуем чуть больше и выше
-    if (p.hat && p.hat !== 'none') {
-        const assetHat = GAME_ASSETS[p.hat];
-        if (assetHat && assetHat.svg) {
-            // x: -14 (чуть шире), y: -95 (выше головы), w: 28, h: 30
-            drawSvgComponent(ctx, assetHat.svg, -28, -90, 56, 44);
-        }
-    }
+    // Шапка
+    if (hatData.svg && hatData.name !== 'None') drawSvgComponent(ctx, hatData.svg, -20, -95, 40, 40);
 
     ctx.restore();
 }
 
 function drawSvgComponent(ctx, svgContent, x, y, w, h) {
-    // Используем viewBox="0 0 24 24", чтобы содержимое растягивалось под наши размеры w и h
+    if (!svgContent) return;
     const fullSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${w}" height="${h}">${svgContent}</svg>`;
-    
     if (!svgCache[svgContent]) {
         const img = new Image();
         const svgBlob = new Blob([fullSvg], {type: 'image/svg+xml;charset=utf-8'});
         const url = URL.createObjectURL(svgBlob);
         img.src = url;
         svgCache[svgContent] = { img, ready: false };
-        img.onload = () => { svgCache[svgContent].ready = true; };
+        img.onload = () => { svgCache[svgContent].ready = true; URL.revokeObjectURL(url); };
     }
-    
     const item = svgCache[svgContent];
-    if (item.ready) {
-        // Рисуем картинку с заданными размерами
-        ctx.drawImage(item.img, x, y, w, h);
-    }
+    if (item && item.ready) ctx.drawImage(item.img, x, y, w, h);
 }
 
+// --- ОТРИСОВКА КАДРА ---
 function render() {
     if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -252,29 +341,29 @@ function render() {
     ctx.save();
     ctx.translate(-cameraX, -cameraY);
 
-// Платформы
-platforms.forEach(p => {
-    ctx.fillStyle = p.color || '#1e1e29'; 
-    ctx.fillRect(p.x, p.y, p.w, p.h);
+    platforms.forEach(p => {
+        // Цвет и тело
+        ctx.fillStyle = p.color || '#1e1e29'; 
+        ctx.fillRect(p.x, p.y, p.w, p.h);
 
-    // --- ВОТ ЭТОТ ФРАГМЕНТ ДЛЯ ТЕКСТА ---
-    if (p.text) {
-        ctx.save();
-        ctx.fillStyle = p.textColor || 'white';
-        ctx.font = `bold ${p.textSize || 20}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(p.text, p.x + p.w / 2, p.y + p.h / 2);
-        ctx.restore();
-    }
-    // ------------------------------------
+        // Текст
+        if (p.text) {
+            ctx.save();
+            ctx.fillStyle = p.textColor || 'white';
+            const fontName = p.font || 'Arial';
+            const size = p.textSize || 20;
+            ctx.font = `bold ${size}px "${fontName}"`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(p.text, p.x + p.w / 2, p.y + p.h / 2);
+            ctx.restore();
+        }
 
-    if (p.type === 'spawn') {
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.strokeRect(p.x, p.y, p.w, p.h);
-    }
-});
-    // Игроки
+        if (p.type === 'spawn') {
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.strokeRect(p.x, p.y, p.w, p.h);
+        }
+    });
+
     for (let id in players) {
         let p = (id === socket.id && me) ? me : players[id];
         drawAvatar(ctx, p);
@@ -282,11 +371,10 @@ platforms.forEach(p => {
             ctx.fillStyle = 'white';
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(p.username, p.x + 15, p.y - 45);
+            ctx.fillText(p.username, p.x + 15, p.y - 95);
         }
     }
 
-    // Частицы
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update(); particles[i].draw(ctx);
         if (particles[i].life <= 0) particles.splice(i, 1);
@@ -297,7 +385,6 @@ platforms.forEach(p => {
     requestAnimationFrame(render);
 }
 
-// --- 5. ЭФФЕКТЫ ---
 function createExplosion(x, y, color) {
     for (let i = 0; i < 20; i++) {
         particles.push({
@@ -311,9 +398,8 @@ function createExplosion(x, y, color) {
     }
 }
 
-// --- 6. УПРАВЛЕНИЕ ---
 window.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT') return;
+    if (document.activeElement === chatInput) return;
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') inputs.left = true;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') inputs.right = true;
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') inputs.jump = true;
@@ -324,37 +410,24 @@ window.addEventListener('keyup', e => {
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') inputs.jump = false;
 });
 
-render();
-
-// --- ФУНКЦИЯ ДЛЯ КНОПКИ RESET ---
-function resetCharacterLocal() {
-    if (me && !me.dead) {
-        die(); // Используем уже готовую функцию смерти
-    }
-}
-
-// --- ЛОГИКА ЧАТА ---
 const chatInput = document.getElementById('chatInput');
 const chatBtn = document.getElementById('chatSendBtn');
 const msgsDiv = document.getElementById('msgs');
 
 function sendMessage() {
     const text = chatInput.value.trim();
-    if (text) {
-        socket.emit('send_msg', text);
-        chatInput.value = '';
-    }
+    if (text) { socket.emit('send_msg', text); chatInput.value = ''; chatInput.blur(); }
 }
 
-chatBtn.onclick = sendMessage;
-chatInput.onkeydown = (e) => {
-    if (e.key === 'Enter') sendMessage();
-};
+if (chatBtn) chatBtn.onclick = sendMessage;
+if (chatInput) { chatInput.onkeydown = (e) => { if (e.key === 'Enter') sendMessage(); }; }
 
-// Получение сообщений
 socket.on('new_msg', (data) => {
+    if (!msgsDiv) return;
     const div = document.createElement('div');
     div.innerHTML = `<b>${data.user}:</b> ${data.text}`;
     msgsDiv.appendChild(div);
-    msgsDiv.scrollTop = msgsDiv.scrollHeight; // Автопрокрутка вниз
+    msgsDiv.scrollTop = msgsDiv.scrollHeight;
 });
+
+render();
