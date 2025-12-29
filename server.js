@@ -22,9 +22,22 @@ const dbConfig = process.env.DATABASE_URL || {
 // В initDB измени создание подключения:
 async function initDB() {
     try {
-        // mysql2 умеет принимать либо объект, либо готовую строку URL
         db = await mysql.createConnection(dbConfig);
         console.log("--- ✅ MySQL Connected! ---");
+
+        // --- ДОБАВЬ ЭТОТ БЛОК ---
+        await db.execute(`CREATE TABLE IF NOT EXISTS users (
+            username VARCHAR(255) PRIMARY KEY, id INT UNIQUE, password VARCHAR(255), 
+            color VARCHAR(7), balance INT DEFAULT 100, inventory TEXT, 
+            equipped TEXT, createdAt BIGINT
+        )`);
+        
+        await db.execute(`CREATE TABLE IF NOT EXISTS games (
+            id VARCHAR(255) PRIMARY KEY, author VARCHAR(255), 
+            name VARCHAR(255), visits INT DEFAULT 0, map TEXT
+        )`);
+        console.log("--- 📦 Tables Ready ---");
+        // ------------------------
 
         // Создание/Обновление админа
         const adminInventory = ["face_smile","hat_beanie","hat_cap_back","hat_headband","hat_headphones","hat_cone","hat_flower","hat_toilet","hat_egg","hat_tophat","hat_cowboy","hat_astronaut","hat_halo","hat_devil","hat_crystal","hat_crown","face_meh","face_angry","face_shades","face_money","face_mask_med","face_clown","face_cyborg","face_cyclops","face_glitch","face_void","face_vampire","shirt_black","shirt_tux","shirt_hoodie","shirt_gold","shirt_armor","shirt_supreme","pants_jeans","pants_camo","pants_robot","pants_adidas","hat_seraphim","face_godmode","shirt_nebula","pants_stellar"];
