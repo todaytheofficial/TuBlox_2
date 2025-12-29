@@ -3,22 +3,32 @@
 
 /* --- ПЕРЕМЕННЫЕ (НОВАЯ ПАЛИТРА) --- */
 :root {
-    --bg-dark: #14141c;
-    --card-bg: #1f1f29;
+    --bg-dark: #0f0f13;
+    --card-bg: #1a1a24;
     --input-bg: #2a2a35;
+    
+    /* Основные цвета */
     --primary: #6c5ce7;
     --primary-dark: #5649c0;
+    --primary-grad: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    --gold-grad: linear-gradient(135deg, #f1c40f, #f39c12, #b38806);
+    
     --accent: #00cec9;
     --danger: #ff7675;
-    --text-main: #dfe6e9;
+    
+    /* Текст */
+    --text-main: #ffffff;
     --text-muted: #b2bec3;
     
+    /* Шрифты */
     --font-head: 'Fredoka', sans-serif;
     --font-body: 'Quicksand', sans-serif;
     
+    /* Радиусы */
     --radius-l: 24px;
     --radius-m: 16px;
     --radius-s: 12px;
+    --radius: 16px; /* Универсальный */
 }
 
 body {
@@ -27,9 +37,10 @@ body {
     font-family: var(--font-body);
     margin: 0;
     overflow-x: hidden;
-    /* Фоновый узор */
-    background-image: radial-gradient(#2c2c3a 1px, transparent 1px);
-    background-size: 30px 30px;
+    /* Узор фона */
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(108, 92, 231, 0.08) 0%, transparent 25%), 
+        radial-gradient(circle at 85% 30%, rgba(0, 206, 201, 0.08) 0%, transparent 25%);
 }
 
 /* --- КНОПКИ (ОБЪЕМНЫЕ) --- */
@@ -52,7 +63,7 @@ button:active { transform: scale(0.95) translateY(2px); }
     box-shadow: 0 5px 0 var(--primary-dark);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    width: 100%; /* Для форм */
+    width: 100%;
     display: inline-block;
     text-align: center;
     text-decoration: none;
@@ -79,32 +90,51 @@ button:active { transform: scale(0.95) translateY(2px); }
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 0 #000;
     border: none;
+    color: white;
 }
-.btn-icon:hover { background: #353b48; border-color: transparent; }
+.btn-icon:hover { background: var(--primary); transform: translateX(-3px); border-color: transparent; }
 .btn-icon:active { box-shadow: 0 2px 0 #000; }
 .btn-icon svg { width: 24px; height: 24px; stroke: white; stroke-width: 2.5; stroke-linecap: round; fill: none; }
 
 /* --- HEADER --- */
 header {
-    background: rgba(31, 31, 41, 0.9);
+    background: rgba(26, 26, 36, 0.95);
     backdrop-filter: blur(10px);
     padding: 15px 5%;
     display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 2px solid #2d3436;
-    position: sticky; top: 0; z-index: 50;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    position: sticky; top: 0; z-index: 100;
 }
-.header-right { display: flex; gap: 15px; align-items: center; }
+
+.header-left, .header-right { display: flex; align-items: center; gap: 20px; }
 
 .logo {
     font-family: var(--font-head);
-    font-size: 28px;
-    background: linear-gradient(45deg, #a29bfe, #00cec9);
+    font-size: 26px;
+    background: var(--primary-grad);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.5));
+    letter-spacing: 1px;
+    filter: drop-shadow(0 2px 4px rgba(108, 92, 231, 0.3));
 }
 
-/* Профиль в хедере */
+/* --- БАЛАНС (VUBS) --- */
+.vubs-badge {
+    background: #000;
+    border: 1px solid #333;
+    padding: 6px 16px 6px 6px;
+    border-radius: 30px;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.vubs-icon-img { width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.vubs-amount { font-family: var(--font-head); color: #ffeaa7; font-size: 18px; letter-spacing: 0.5px; font-weight: 800; }
+
+/* Мини аватар в хедере */
+.nav-avatar svg { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; background: #2d3436; }
+
+/* Профиль в хедере (старый стиль, для совместимости) */
 .profile-pill {
     background: #2d3436;
     padding: 5px 15px 5px 5px;
@@ -173,17 +203,17 @@ header {
 .auth-link:hover { text-decoration: underline; }
 
 /* --- DASHBOARD & GRIDS --- */
-main { max-width: 1200px; margin: 0 auto; }
+main { max-width: 1400px; margin: 0 auto; }
 h2, h3 { font-family: var(--font-head); color: white; margin-bottom: 15px; }
 
-.grid, .shop-grid {
+.grid {
     display: grid; 
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 25px; padding: 20px;
 }
 
-/* Карточки Игр и Предметов */
-.card, .shop-card, .item-card {
+/* Карточки Игр */
+.card {
     background: var(--card-bg);
     border-radius: var(--radius-l);
     overflow: hidden;
@@ -193,12 +223,8 @@ h2, h3 { font-family: var(--font-head); color: white; margin-bottom: 15px; }
     box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     display: flex; flex-direction: column;
 }
-.card:hover, .shop-card:hover, .item-card:hover { 
-    transform: translateY(-8px); 
-    border-color: var(--primary); 
-}
+.card:hover { transform: translateY(-8px); border-color: var(--primary); }
 
-/* Специфика карточки игры */
 .card-img-placeholder {
     height: 140px;
     background: linear-gradient(135deg, #6c5ce7, #a29bfe);
@@ -211,18 +237,146 @@ h2, h3 { font-family: var(--font-head); color: white; margin-bottom: 15px; }
     font-size: 14px; font-weight: 700; color: var(--text-muted);
 }
 
-/* Специфика карточки магазина/инвентаря */
-.shop-card, .item-card { 
+/* --- МАГАЗИН (SHOP) - НОВЫЙ СТИЛЬ --- */
+
+/* Табы */
+.shop-tabs {
+    display: flex; justify-content: center; gap: 15px; padding: 30px 20px 10px; flex-wrap: wrap;
+}
+.tab-btn {
+    background: var(--card-bg); color: var(--text-muted);
+    border: 2px solid transparent;
+    padding: 12px 24px; border-radius: 50px;
+    font-family: var(--font-head); font-size: 16px;
+    cursor: pointer; transition: 0.3s;
+    display: flex; gap: 8px; align-items: center;
+}
+.tab-btn span { font-size: 18px; }
+.tab-btn:hover { background: #2d2d3a; color: white; transform: translateY(-2px); }
+.tab-btn.active {
+    background: var(--primary); color: white;
+    box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4);
+}
+
+/* Сетка магазина */
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 25px; padding: 20px 5% 60px;
+}
+
+/* Карточка товара */
+.shop-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 15px;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex; flex-direction: column; gap: 15px;
+    overflow: hidden;
+}
+
+.shop-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Контейнер картинки */
+.card-top {
+    height: 160px;
+    background: radial-gradient(circle, #2d2d3a 0%, #1a1a24 70%);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+}
+.item-preview svg {
+    width: 130px; /* УВЕЛИЧЕННЫЙ РАЗМЕР */
+    height: 130px;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.3));
+    transition: transform 0.3s;
+}
+.shop-card:hover .item-preview svg { transform: scale(1.1); }
+
+/* Информация о товаре */
+.card-info h4 {
+    margin: 0 0 8px; color: white; font-family: var(--font-head); font-size: 18px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.price-row { display: flex; align-items: center; gap: 8px; font-weight: bold; color: #ffeaa7; font-size: 18px; }
+.price-row img { width: 20px; }
+
+/* Кнопка купить */
+.btn-buy {
+    width: 100%; padding: 12px;
+    background: var(--primary); color: white;
+    border: none; border-radius: 10px;
+    font-family: var(--font-head); font-size: 14px;
+    cursor: pointer; transition: 0.2s;
+}
+.btn-buy:hover { filter: brightness(1.1); transform: translateY(-2px); }
+.btn-buy:active { transform: scale(0.95); }
+.btn-buy.hidden { display: none; }
+
+/* Special glow for Limited items */
+.shop-card.limited {
+    border: 2px solid #ffaa00;
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.2);
+}
+
+.shop-card.ultalimited {
+    border: 2px solid #ff00ff;
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
+    background: linear-gradient(145deg, #ffffff, #fff0ff);
+}
+
+/* Badge styling */
+.limited-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ffaa00;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.limited-badge.ultra {
+    background: linear-gradient(90deg, #ff00ff, #7000ff);
+    animation: rainbow-glow 2s infinite alternate;
+}
+
+@keyframes rainbow-glow {
+    from { filter: hue-rotate(0deg); }
+    to { filter: hue-rotate(30deg); }
+}
+
+/* --- OWNED ITEM --- */
+.shop-card.owned-card { opacity: 0.7; }
+.owned-tag {
+    color: var(--accent); font-weight: bold; font-family: var(--font-head);
+    display: flex; align-items: center; gap: 5px;
+}
+.owned-tag::before { content: '✓'; }
+
+/* Специфика item-card (инвентарь) */
+.item-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-l);
+    overflow: hidden;
+    border: 3px solid #2d3436;
+    transition: 0.2s;
+    position: relative;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    display: flex; flex-direction: column;
     padding: 20px; text-align: center; justify-content: space-between; gap: 10px;
 }
-.shop-svg svg, .item-icon { width: 80px; height: 80px; margin: 0 auto; display: block; filter: drop-shadow(0 5px 0 rgba(0,0,0,0.3)); }
-.shop-card h4 { margin: 10px 0 5px; font-family: var(--font-head); font-size: 18px; }
-.shop-card p { font-weight: bold; color: #ffd700; margin: 0 0 10px; }
-
-.equipped-border, .item-card.equipped { 
-    border-color: var(--accent); 
-    box-shadow: 0 0 20px rgba(0, 206, 201, 0.2); 
-}
+.item-card:hover { transform: translateY(-8px); border-color: var(--primary); }
+.item-icon { width: 80px; height: 80px; margin: 0 auto; display: block; filter: drop-shadow(0 5px 0 rgba(0,0,0,0.3)); }
+.equipped-border, .item-card.equipped { border-color: var(--accent); box-shadow: 0 0 20px rgba(0, 206, 201, 0.2); }
 
 /* --- PROFILE PAGE (New Layout) --- */
 .profile-layout {
@@ -287,92 +441,12 @@ h2, h3 { font-family: var(--font-head); color: white; margin-bottom: 15px; }
     justify-content: center;
 }
 
-.vubs-icon {
-    width: 24px;
-    height: 24px;
-    vertical-align: middle;
-    margin-right: 5px;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
-}
-
-/* --- СТИЛЬ ВАЛЮТЫ (КАК НА СКРИНЕ) --- */
-.vubs-badge {
-    background-color: #202020; /* Темно-серый фон */
-    border: 2px solid #2d2d2d; /* Чуть светлее рамка */
-    border-radius: 50px;       /* Овальная форма */
-    padding: 5px 15px 5px 5px; /* Отступы */
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    font-family: 'Fredoka', sans-serif; /* Жирный шрифт */
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5); /* Тень плашки */
-}
-
-.vubs-icon-img {
-    width: 32px;
-    height: 32px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-}
-
-.vubs-amount {
-    color: #ffeaa7; /* Светло-желтый/золотой */
-    font-size: 20px;
-    font-weight: 800;
-
-    letter-spacing: 1px;
-}
-
-
-/* Добавь это в конец своего style.css */
-
-.shop-tabs {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    padding: 20px;
-    flex-wrap: wrap;
-}
-
-.tab-btn {
-    background: #2d3436;
-    color: white;
-    padding: 10px 25px;
-    border-radius: var(--radius-m);
-    font-family: var(--font-head);
-    font-weight: 700;
-    font-size: 16px;
-    border: 2px solid #3d3d3d;
-    transition: 0.2s;
-}
-
-.tab-btn.active {
-    background: var(--primary);
-    border-color: var(--accent);
-    box-shadow: 0 0 15px rgba(108, 92, 231, 0.4);
-}
-
-.tab-btn:hover:not(.active) {
-    background: #3d3d3d;
-}
-
-.price-tag {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 18px;
-    color: #ffd700 !important;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.item-icon svg {
-    width: 100%;
-    height: 100%;
-    max-height: 100px;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
-}
-
-.shop-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    padding: 20px 5%;
-}
+ .tab-icon {
+        width: 20px; 
+        height: 20px; 
+        fill: currentColor;
+    }
+    /* Поправка отступов для кнопки */
+    .tab-btn {
+        gap: 10px;
+    }

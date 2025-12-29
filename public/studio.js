@@ -8,16 +8,15 @@ let selectedObj = null;
 let camX = 0, camY = 0;
 let isPanning = false, isDragging = false;
 
-// === SCALE VARIABLES (НОВЫЕ) ===
+// === SCALE VARIABLES ===
 let isResizing = false;
-let resizeHandle = null; // 'n', 's', 'e', 'w', 'ne', etc.
+let resizeHandle = null; 
 let resizeStart = { x: 0, y: 0, w: 0, h: 0, mx: 0, my: 0 };
-// ===============================
 
 let startX, startY;
 let contextMenuObj = null;
 
-// SVG ICONS (CONSTANTS)
+// SVG ICONS
 const ICONS = {
     part: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>',
     spawn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>',
@@ -30,64 +29,95 @@ const ICONS = {
 // TuModels state
 let currentTool = 'part';
 let currentTab = 'build';
-// === Вставь это в studio.js вместо старого modelsLibrary ===
+
+// === ОБНОВЛЕННАЯ БИБЛИОТЕКА МОДЕЛЕЙ ===
 let modelsLibrary = [
-    // --- SECTION: BLOCKS ---
+    // --- BLOCKS ---
     {
         id: 'kill_part',
         category: 'Blocks',
         name: 'Kill Part',
         objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#ff0000', anchored: true, collide: true, special: 'kill', transparency: 0 }]
     },
+    
+    // --- MECHANISMS ---
     {
-        id: 'speed_pad',
-        category: 'Blocks',
-        name: 'Speed Pad',
-        objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#f1c40f', anchored: true, collide: false, special: 'speed_up', customSpeed: 16, text: 'Speed+', textSize: 14, textColor: '#000000', transparency: 0.2 }]
+        id: 'spinner_part',
+        category: 'Mechanisms',
+        name: 'Spinner (Kill)',
+        objects: [{ type: 'part', x: 0, y: 0, w: 150, h: 20, color: '#e74c3c', anchored: true, collide: true, special: 'spinner', spinSpeed: 2, transparency: 0 }]
     },
     {
-        id: 'jump_pad',
-        category: 'Blocks',
-        name: 'Jump Pad',
-        objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#2ecc71', anchored: true, collide: false, special: 'jump_boost', customJump: 30, text: 'Jump+', textSize: 14, textColor: '#000000', transparency: 0.2 }]
-    },
-    {
-        id: 'big_player',
-        category: 'Blocks',
-        name: 'Big Player',
-        objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 80, color: '#9b59b6', anchored: true, collide: false, special: 'big_player', customScale: 2, text: 'BIG', textSize: 20, transparency: 0.3 }]
-    },
-    {
-        id: 'small_player',
-        category: 'Blocks',
-        name: 'Small Player',
-        objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 50, color: '#00cec9', anchored: true, collide: false, special: 'small_player', customScale: 0.5, text: 'Small', textSize: 15, transparency: 0.3 }]
+        id: 'moving_part',
+        category: 'Mechanisms',
+        name: 'Moving Platform',
+        // ВАЖНО: moveSpeed теперь 2 (было 0.03) - чтобы двигалось заметно!
+        objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 20, color: '#3498db', anchored: true, collide: true, special: 'mover', moveSpeed: 2, rangeX: 200, rangeY: 0, transparency: 0 }]
     },
     {
         id: 'teleport_set',
-        category: 'Blocks',
+        category: 'Mechanisms',
         name: 'Teleporters',
         objects: [
             { type: 'part', x: 0, y: 0, w: 80, h: 10, color: '#3498db', anchored: true, collide: false, special: 'teleport', target: 'tp_out', text: 'In', transparency: 0.2 },
             { type: 'part', x: 150, y: 0, w: 80, h: 10, color: '#e74c3c', anchored: true, collide: false, special: 'teleport', target: 'tp_in', id: 'tp_out', text: 'Out', transparency: 0.2 }
         ]
     },
-    
-    // --- SECTION: ITEMS (НОВЫЙ РАЗДЕЛ) ---
+
+    // --- BOOSTS ---
+    {
+        id: 'speed_pad',
+        category: 'Boosts',
+        name: 'Speed Pad',
+        objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#f1c40f', anchored: true, collide: false, special: 'speed_up', customSpeed: 16, text: 'Speed+', textSize: 14, textColor: '#000000', transparency: 0.2 }]
+    },
+    {
+        id: 'jump_pad',
+        category: 'Boosts',
+        name: 'Jump Pad',
+        objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#2ecc71', anchored: true, collide: false, special: 'jump_boost', customJump: 30, text: 'Jump+', textSize: 14, textColor: '#000000', transparency: 0.2 }]
+    },
+    {
+        id: 'big_player',
+        category: 'Boosts',
+        name: 'Big Player',
+        objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 80, color: '#9b59b6', anchored: true, collide: false, special: 'big_player', customScale: 2, text: 'BIG', textSize: 20, transparency: 0.3 }]
+    },
+    {
+        id: 'small_player',
+        category: 'Boosts',
+        name: 'Small Player',
+        objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 50, color: '#00cec9', anchored: true, collide: false, special: 'small_player', customScale: 0.5, text: 'Small', textSize: 15, transparency: 0.3 }]
+    },
+    {
+        id: 'reset_stats',
+        category: 'Boosts',
+        name: 'Reset Stats',
+        objects: [{ type: 'part', x: 0, y: 0, w: 40, h: 80, color: '#bdc3c7', anchored: true, collide: false, special: 'normal_player', text: 'Reset', textSize: 12, transparency: 0.3 }]
+    },
+
+    // --- ITEMS ---
     {
         id: 'tool_flashlight',
-        category: 'Items', // Категория предметы
+        category: 'Items',
         name: 'Flashlight',
+        objects: [{ type: 'part', x: 0, y: 0, w: 40, h: 15, color: '#2d3436', anchored: true, collide: false, special: 'flashlight', text: '🔦', textSize: 12 }]
+    },
+
+       {
+        id: 'tool_sword',
+        category: 'Items',
+        name: 'Sword',
         objects: [{ 
             type: 'part', 
             x: 0, y: 0, 
-            w: 40, h: 15, 
-            color: '#2d3436', 
-            anchored: true, // В игре он должен висеть, пока не возьмешь
-            collide: false, // Сквозь него проходим, чтобы взять
-            special: 'flashlight', 
-            text: 'Flashlight', 
-            textSize: 12 
+            w: 15, h: 45, 
+            color: '#bdc3c7', 
+            anchored: true, 
+            collide: false, 
+            special: 'sword', 
+            text: '⚔️', // Иконка над предметом
+            textSize: 20 
         }]
     }
 ];
@@ -129,7 +159,6 @@ function initStudio() {
 
     const storedUser = localStorage.getItem('tublox_user');
     if (!storedUser) {
-        // Fallback for dev/testing
         currentUser = { username: "Guest" }; 
     } else {
         currentUser = JSON.parse(storedUser);
@@ -138,13 +167,12 @@ function initStudio() {
     if (saveBtn) saveBtn.onclick = saveProject;
 
     resize();
-    loadProject(); // Вызов загрузки проекта
+    loadProject();
     switchTab('build');
 
     setupEventListeners();
     renderModelLibrary();
 }
-
 
 // ==========================================
 // EVENT LISTENERS & RESIZE
@@ -183,31 +211,28 @@ function resize() {
 }
 
 // ==========================================
-// PROJECT LOADING/SAVING (ORIGINAL LOGIC)
+// PROJECT LOADING/SAVING
 // ==========================================
 async function loadProject() {
     try {
-        // Твой оригинальный fetch
         const res = await fetch(`/api/load_studio/${gameId}`);
         if (!res.ok) throw new Error('Network response was not ok');
         const data = await res.json();
         
         studioObjects = data.map || [];
         
-        // Migration/Sanity check logic
+        // Migration logic
         studioObjects.forEach(obj => {
             if (obj.anchored === undefined) obj.anchored = true;
             if (obj.collide === undefined) obj.collide = true;
             if (obj.transparency === undefined) obj.transparency = 0;
-            if (obj.scaleX === undefined) obj.scaleX = 1;
-            if (obj.scaleY === undefined) obj.scaleY = 1;
+            // Устанавливаем дефолтную скорость, если её нет
+            if (obj.special === 'mover' && !obj.moveSpeed) obj.moveSpeed = 2; 
         });
         
-        console.log("Project loaded:", studioObjects.length, "objects");
         render();
         updateExplorer();
     } catch (e) {
-        console.error('Load error or new project:', e);
         studioObjects = [];
         render();
         updateExplorer();
@@ -231,7 +256,6 @@ async function saveProject() {
         if (res.ok) alert('✅ Game saved!');
         else alert('❌ Save failed');
     } catch (error) {
-        console.error(error);
         alert('❌ Error saving game');
     }
     saveBtn.innerHTML = btnContent;
@@ -265,7 +289,7 @@ function setBuildTool(tool) {
         targetBtn = targetBtn.parentElement;
     }
     if (targetBtn) targetBtn.classList.add('active');
-    render(); // Перерисовать, чтобы показать/скрыть ручки
+    render();
 }
 
 // ==========================================
@@ -273,7 +297,7 @@ function setBuildTool(tool) {
 // ==========================================
 function getScaleHandles(obj) {
     if (!obj) return null;
-    const s = 10; // Handle size
+    const s = 10; 
     const hw = s / 2;
     return {
         nw: { x: obj.x - hw, y: obj.y - hw, w: s, h: s, cursor: 'nwse-resize' },
@@ -304,7 +328,6 @@ function addPart(model) {
     }
     render(); updateExplorer(); showProperties();
 }
-// Helper hooks for HTML onclick
 window.addPartDefault = () => addPart(null);
 
 function addSpawn() {
@@ -383,7 +406,25 @@ function showProperties() {
     </div>
     `;
 
-    // --- НОВЫЙ БЛОК ДЛЯ СПЕЦИАЛЬНЫХ СВОЙСТВ ---
+    // 1. SPINNER
+    if (selectedObj.special === 'spinner') {
+        html += `<hr style="border-color:#333; margin:10px 0;">
+        <label style="color:#e74c3c">Rotation Speed</label>
+        <input type="number" value="${selectedObj.spinSpeed || 2}" onchange="updateObjectProperty('spinSpeed', this.value)">`;
+    }
+
+    // 2. MOVER (Здесь обновлены дефолты в UI)
+    if (selectedObj.special === 'mover') {
+        html += `<hr style="border-color:#333; margin:10px 0;">
+        <label style="color:#3498db">Move Speed (Def: 2)</label>
+        <input type="number" step="0.1" value="${selectedObj.moveSpeed || 2}" onchange="updateObjectProperty('moveSpeed', this.value)">
+        <label style="color:#3498db">Range X (Distance)</label>
+        <input type="number" value="${selectedObj.rangeX || 0}" onchange="updateObjectProperty('rangeX', this.value)">
+        <label style="color:#3498db">Range Y (Distance)</label>
+        <input type="number" value="${selectedObj.rangeY || 0}" onchange="updateObjectProperty('rangeY', this.value)">`;
+    }
+
+    // 3. BOOSTS
     if (selectedObj.special === 'speed_up') {
         html += `<hr style="border-color:#333; margin:10px 0;">
         <label style="color:#f1c40f">Speed Power (Def: 6)</label>
@@ -399,7 +440,6 @@ function showProperties() {
         <label style="color:#9b59b6">Scale Factor (Def: 1)</label>
         <input type="number" step="0.1" value="${selectedObj.customScale || 1}" onchange="updateObjectProperty('customScale', this.value)">`;
     }
-    // ------------------------------------------
 
     if (selectedObj.type === 'text' || selectedObj.text) {
         html += `<hr style="border-color:#333; margin:10px 0;"> 
@@ -417,11 +457,9 @@ function showProperties() {
     p.innerHTML = html;
 }
 
-
 function updateObjectProperty(prop, val) {
     if (!selectedObj) return;
-    // Добавили customSpeed, customJump, customScale в список чисел
-    if (['w','h','x','y','textSize','transparency','scaleX','scaleY', 'customSpeed', 'customJump', 'customScale'].includes(prop)) {
+    if (['w','h','x','y','textSize','transparency','scaleX','scaleY', 'customSpeed', 'customJump', 'customScale', 'spinSpeed', 'moveSpeed', 'rangeX', 'rangeY'].includes(prop)) {
         selectedObj[prop] = Number(val);
     }
     else if (['anchored','collide'].includes(prop)) selectedObj[prop] = Boolean(val);
@@ -450,7 +488,7 @@ function updateExplorer() {
         if (obj.type === 'spawn') icon = ICONS.spawn;
         if (obj.type === 'text') icon = ICONS.text;
 
-        div.innerHTML = `${icon} <span>${obj.type} <span style="opacity:0.5">#${obj.id.toString().slice(-3)}</span></span>`;
+        div.innerHTML = `${icon} <span>${obj.special ? obj.special : obj.type} <span style="opacity:0.5">#${obj.id.toString().slice(-3)}</span></span>`;
         
         div.onclick = () => {
             selectedObj = obj;
@@ -532,7 +570,6 @@ function handleMouseDown(e) {
             }
         }
     }
-    // ===================
 
     const hit = studioObjects.slice().reverse().find(o => 
         mx > o.x && mx < o.x + o.w && my > o.y && my < o.y + o.h
@@ -709,16 +746,47 @@ function render() {
         ctx.save();
         ctx.globalAlpha = 1 - (obj.transparency || 0);
         if (obj.collide === false) ctx.globalAlpha *= 0.6;
-        
         ctx.fillStyle = obj.color;
-        ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+
+        // --- RENDER SPINNER (Preview Rotation) ---
+        if (obj.special === 'spinner') {
+            ctx.translate(obj.x + obj.w/2, obj.y + obj.h/2);
+            ctx.rotate(Date.now() / 1000); 
+            ctx.fillRect(-obj.w/2, -obj.h/2, obj.w, obj.h);
+        } else {
+            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+        }
+
+        // --- RENDER MOVER PATH ---
+        if (obj.special === 'mover') {
+            ctx.restore(); 
+            ctx.save(); 
+            ctx.translate(camX, camY); 
+            
+            // Рисуем путь (пунктир)
+            ctx.strokeStyle = '#3498db';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(obj.x + obj.w/2, obj.y + obj.h/2);
+            ctx.lineTo(obj.x + obj.w/2 + (obj.rangeX||0), obj.y + obj.h/2 + (obj.rangeY||0));
+            ctx.stroke();
+
+            // Рисуем "Призрак" конечной точки
+            ctx.globalAlpha = 0.2;
+            ctx.fillStyle = obj.color;
+            ctx.fillRect(obj.x + (obj.rangeX||0), obj.y + (obj.rangeY||0), obj.w, obj.h);
+        }
         
+        ctx.restore(); 
+        ctx.save(); 
+        ctx.translate(camX, camY);
+
         if (obj.anchored === false) {
             ctx.strokeStyle = '#ff7675';
             ctx.strokeRect(obj.x+2, obj.y+2, obj.w-4, obj.h-4);
         }
         
-        if (obj.text) {
+        if (obj.text && obj.special !== 'spinner') {
             ctx.fillStyle = obj.textColor || 'white';
             ctx.font = `bold ${obj.textSize || 20}px "${obj.font || 'Arial'}"`;
             ctx.textAlign = 'center';
@@ -749,7 +817,6 @@ function render() {
             ctx.stroke();
         }
     }
-    // ==========================
 
     ctx.restore();
 }
@@ -757,7 +824,6 @@ function render() {
 // ==========================================
 // MODEL LIBRARY UI
 // ==========================================
-// === ЗАМЕНИ ФУНКЦИЮ renderModelLibrary НА ЭТУ ===
 function renderModelLibrary() {
     if (!modelsLibraryEl) return;
     modelsLibraryEl.innerHTML = '';
@@ -767,7 +833,7 @@ function renderModelLibrary() {
         return;
     }
 
-    // Группируем модели по категориям
+    // Группируем модели
     const categories = {};
     modelsLibrary.forEach(model => {
         const cat = model.category || 'Misc';
@@ -777,7 +843,7 @@ function renderModelLibrary() {
 
     // Отрисовываем
     for (const [catName, models] of Object.entries(categories)) {
-        // Заголовок категории
+        // Заголовок
         const header = document.createElement('div');
         header.style.gridColumn = '1 / -1';
         header.style.color = '#888';
@@ -789,7 +855,7 @@ function renderModelLibrary() {
         header.innerText = catName;
         modelsLibraryEl.appendChild(header);
 
-        // Модели этой категории
+        // Модели
         models.forEach(model => {
             const el = document.createElement('div');
             el.className = 'model-item';
@@ -807,7 +873,6 @@ function renderModelLibrary() {
 
 function renderModelPreview() {
     if (!modelPreviewCanvas || !modelPreviewCtx) return;
-    // Fix zero size issues
     const w = modelPreviewCanvas.parentElement.clientWidth || 300;
     const h = 150;
     modelPreviewCanvas.width = w;

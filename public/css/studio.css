@@ -1,205 +1,190 @@
-/* --- COLORS & VARS --- */
+/* --- STUDIO THEME (VS Code Style) --- */
 :root {
-    --studio-bg: #0f0f18;
-    --studio-surface: #1a1a26;
-    --studio-panel: #222234;
-    --studio-border: #2d2d44;
-    --studio-hover: #353550;
-    --studio-primary: #5865F2;
-    --studio-accent: #00cc88;
-    --studio-danger: #ff3366;
-    --studio-text: #ffffff;
-    --studio-text-dim: #a0a0c0;
-    --studio-radius-sm: 6px;
-    --studio-radius-md: 10px;
+    --std-bg: #1e1e1e;          /* Основной фон */
+    --std-panel: #252526;       /* Фон панелей */
+    --std-header: #333333;      /* Заголовки */
+    --std-border: #3e3e42;      /* Границы */
+    --std-hover: #2a2d2e;       /* Наведение */
+    --std-blue: #007acc;        /* Акцент (синий) */
+    --std-text: #cccccc;        /* Текст */
+    --std-text-bright: #ffffff; /* Яркий текст */
+    --std-icon: #c5c5c5;
 }
 
 body {
-    background: var(--studio-bg);
-    color: var(--studio-text);
-    font-family: 'Segoe UI', sans-serif;
+    background-color: var(--std-bg);
+    color: var(--std-text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
-    overflow: hidden;
     height: 100vh;
     display: flex;
     flex-direction: column;
-}
-
-/* --- TOP RIBBON --- */
-.ribbon {
-    height: 50px;
-    background: #151520;
-    border-bottom: 1px solid var(--studio-border);
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-    gap: 10px;
-}
-.ribbon b { font-size: 1.2rem; color: var(--studio-primary); margin-right: 15px; }
-.ribbon button {
-    background: var(--studio-panel);
-    border: 1px solid var(--studio-border);
-    color: white;
-    padding: 6px 12px;
-    border-radius: var(--studio-radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-}
-.ribbon button:hover { background: var(--studio-hover); }
-.ribbon .btn-primary { background: var(--studio-primary); border: none; }
-.ribbon .btn-primary:hover { opacity: 0.9; }
-
-/* --- LAYOUT --- */
-.workspace {
-    display: flex;
-    flex: 1;
     overflow: hidden;
-    position: relative;
+    font-size: 13px;
 }
-canvas { flex: 1; display: block; background: #111; }
 
-.sidebar {
-    width: 300px;
-    background: var(--studio-surface);
-    border-left: 1px solid var(--studio-border);
+/* --- ВЕРХНЯЯ ЛЕНТА (RIBBON) --- */
+.ribbon {
+    height: 45px;
+    background-color: #3c3c3c;
+    border-bottom: 1px solid #000;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    padding: 0 15px;
+    gap: 15px;
+}
+
+.ribbon b {
+    color: var(--std-text-bright);
+    font-size: 14px;
+    margin-right: 20px;
+    display: flex; align-items: center; gap: 8px;
+}
+.ribbon b::before {
+    content: '🛠️'; font-size: 16px;
+}
+
+.ribbon button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--std-text);
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+    transition: 0.1s;
+}
+.ribbon button:hover { background: var(--std-hover); }
+.ribbon button svg { width: 14px; height: 14px; fill: currentColor; }
+
+/* Кнопка Play */
+.ribbon .btn-primary {
+    background: #0e639c;
+    color: white;
+    border: 1px solid #0e639c;
+}
+.ribbon .btn-primary:hover { background: #1177bb; }
+
+/* --- РАБОЧАЯ ОБЛАСТЬ --- */
+.workspace {
+    flex: 1;
+    display: flex;
+    position: relative;
+    background: #111; /* Цвет пустоты под канвасом */
+}
+
+/* Канвас */
+canvas {
+    flex: 1;
+    display: block;
+    background-image: 
+        linear-gradient(#2a2a2a 1px, transparent 1px),
+        linear-gradient(90deg, #2a2a2a 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
+}
+
+/* --- БОКОВАЯ ПАНЕЛЬ (EXPLORER / PROPERTIES) --- */
+.sidebar {
+    width: 280px;
+    background-color: var(--std-panel);
+    border-left: 1px solid var(--std-border);
+    display: flex; flex-direction: column;
     z-index: 10;
 }
 
-/* --- SCROLLBARS --- */
-.content {
-    flex: 1;
-    overflow-y: auto; /* Включен скролл */
-    padding: 15px;
-}
-/* Стилизация полосы прокрутки */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: var(--studio-bg); }
-::-webkit-scrollbar-thumb { background: var(--studio-border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--studio-hover); }
-
-/* --- PANELS --- */
 .panel-header {
-    background: var(--studio-panel);
-    padding: 10px 15px;
-    font-size: 0.75rem;
+    padding: 8px 15px;
+    background: var(--std-header);
+    color: var(--std-text-bright);
+    font-weight: 600;
     text-transform: uppercase;
-    font-weight: bold;
-    color: var(--studio-text-dim);
-    border-bottom: 1px solid var(--studio-border);
-    border-top: 1px solid var(--studio-border);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    display: flex; justify-content: space-between; align-items: center;
 }
 .panel-header:first-child { border-top: none; }
 
-/* --- TOOLS BUTTONS --- */
-.model-tools { display: flex; gap: 5px; }
-.model-tool {
+.content {
     flex: 1;
-    background: var(--studio-panel);
-    border: 1px solid var(--studio-border);
-    color: white;
-    padding: 8px;
-    border-radius: var(--studio-radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
+    overflow-y: auto;
+    padding: 10px;
 }
-.model-tool:hover { background: var(--studio-hover); }
-.model-tool.active { background: var(--studio-primary); border-color: var(--studio-primary); }
 
-/* --- EXPLORER ITEMS --- */
+/* --- ИНСТРУМЕНТЫ МОДЕЛИРОВАНИЯ --- */
+.model-tools {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 10px;
+    background: var(--std-panel);
+    border-bottom: 1px solid var(--std-border);
+}
+.model-tool {
+    background: #333; border: 1px solid #3c3c3c; color: white;
+    padding: 6px; border-radius: 2px; cursor: pointer;
+    font-size: 11px; text-align: center;
+}
+.model-tool:hover { background: #444; }
+.model-tool.active { background: var(--std-blue); border-color: var(--std-blue); }
+
+/* --- СПИСОК ОБЪЕКТОВ --- */
 .obj-item {
-    padding: 8px 10px;
-    margin-bottom: 4px;
-    background: var(--studio-panel);
-    border-radius: var(--studio-radius-sm);
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 8px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    color: var(--std-text);
+    border-radius: 3px;
+    margin-bottom: 2px;
 }
-.obj-item:hover { background: var(--studio-hover); }
-.obj-item.selected { 
-    background: rgba(88, 101, 242, 0.2); 
-    border: 1px solid var(--studio-primary);
+.obj-item:hover { background: var(--std-hover); }
+.obj-item.selected { background: #094771; color: white; }
+.obj-item span {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* --- PROPERTIES --- */
-label { display: block; margin: 10px 0 5px; color: var(--studio-text-dim); font-size: 0.75rem; }
+/* --- СВОЙСТВА (PROPERTIES) --- */
+.prop-group { margin-bottom: 10px; }
+label {
+    display: block; color: var(--std-text); margin-bottom: 4px; font-size: 11px;
+}
 input[type="text"], input[type="number"], select {
     width: 100%; box-sizing: border-box;
-    background: var(--studio-bg); border: 1px solid var(--studio-border);
-    color: white; padding: 6px; border-radius: 4px;
+    background: #3c3c3c; border: 1px solid #3c3c3c;
+    color: var(--std-text-bright);
+    padding: 4px 6px;
+    font-size: 12px; outline: none;
+    border-radius: 2px;
 }
+input:focus { border-color: var(--std-blue); }
+
+/* Цвет */
 input[type="color"] {
-    width: 100%; height: 35px; border: none; background: transparent; cursor: pointer;
+    width: 100%; height: 25px;
+    background: none; border: 1px solid var(--std-border);
+    cursor: pointer; padding: 2px;
 }
 
-/* --- MODAL (TEXT EDITOR) --- */
-#text-modal-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
-    z-index: 9999;
-    display: flex; /* Flex для центрирования */
-    align-items: center;
-    justify-content: center;
-}
+/* Скроллбар */
+::-webkit-scrollbar { width: 10px; background: var(--std-panel); }
+::-webkit-scrollbar-thumb { background: #424242; border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: #4f4f4f; }
 
-.text-modal {
-    background: var(--studio-surface);
-    width: 350px;
-    padding: 20px;
-    border-radius: var(--studio-radius-md);
-    border: 1px solid var(--studio-border);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    display: flex;
-    flex-direction: column;
-}
-.text-modal h3 { margin: 0 0 15px 0; text-align: center; }
-.font-preview {
-    margin-top: 15px;
-    padding: 20px;
-    background: var(--studio-bg);
-    border: 1px dashed var(--studio-border);
-    text-align: center;
-    font-size: 1.2rem;
-    min-height: 40px;
-}
-
-/* --- CONTEXT MENU --- */
+/* Контекстное меню */
 #context-menu {
     position: absolute;
-    background: var(--studio-surface);
-    border: 1px solid var(--studio-border);
-    border-radius: 6px;
-    padding: 5px;
-    display: none;
-    flex-direction: column;
+    background: #252526;
+    border: 1px solid #454545;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    padding: 4px 0;
+    min-width: 150px;
+    display: none; flex-direction: column;
     z-index: 2000;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
 }
 .ctx-btn {
-    background: transparent; border: none; color: white;
-    padding: 8px 15px; text-align: left; cursor: pointer;
-    display: flex; gap: 8px; align-items: center;
-    border-radius: 4px;
+    background: none; border: none; color: var(--std-text);
+    padding: 6px 15px; text-align: left; cursor: pointer;
+    font-size: 12px;
 }
-.ctx-btn:hover { background: var(--studio-primary); }
-.ctx-btn.delete:hover { background: var(--studio-danger); }
-
-/* --- RESPONSIVE --- */
-@media (max-width: 768px) {
-    .workspace { flex-direction: column; }
-    .sidebar { width: 100%; height: 50vh; border-left: none; border-top: 1px solid var(--studio-border); }
-    .btn-text { display: none; }
-    .ribbon b { font-size: 1rem; }
-}
+.ctx-btn:hover { background: #094771; color: white; }
+.ctx-btn.delete { color: #ff6b6b; }

@@ -4,30 +4,62 @@
     <meta charset="UTF-8">
     <title>Shop - TuBlox 2</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Подключаем красивые шрифты -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="shop-background"></div>
+
     <header>
-        <div class="header-right">
-            <button onclick="location.href='index.html'" class="btn-icon">
-                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="header-left">
+            <button onclick="location.href='index.html'" class="btn-icon back-btn">
+                <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <div class="logo">SHOP</div>
+            <div class="logo">MARKETPLACE</div>
         </div>
         
-        <div class="vubs-badge">
-            <img src="assets/vubs.png" class="vubs-icon-img" alt="V">
-            <span class="vubs-amount" id="user-balance">...</span>
+        <div class="header-right">
+            <div class="vubs-badge">
+                <img src="assets/vubs.png" class="vubs-icon-img" alt="V">
+                <span class="vubs-amount" id="user-balance">Loading...</span>
+            </div>
+            <div class="profile-mini" id="profile-display">
+                <!-- Аватарка встанет сюда -->
+            </div>
         </div>
     </header>
 
     <main>
-        <div class="shop-tabs">
-            <button class="tab-btn active" onclick="switchTab('hat', this)">Accessories</button>
-            <button class="tab-btn" onclick="switchTab('face', this)">Faces</button>
-            <button class="tab-btn" onclick="switchTab('shirt', this)">Shirts</button>
-            <button class="tab-btn" onclick="switchTab('pants', this)">Pants</button>
-        </div>
-
+       <div class="shop-tabs">
+    <button class="tab-btn active" onclick="switchTab('hat', this)">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2 12h20v2H2zM18 12V8c0-3.31-2.69-6-6-6S6 4.69 6 8v4H2v2h20v-2h-4z"/>
+        </svg>
+        <span>Accessories</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('face', this)">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+            <circle cx="8" cy="10" r="1.5"/>
+            <circle cx="16" cy="10" r="1.5"/>
+            <path d="M8 16c1.33 2 4 2 8 0" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span>Faces</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('shirt', this)">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 2l-4 4-4-4-6 2v18h20V4l-6-2zm-4 6c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/>
+        </svg>
+        <span>Shirts</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('pants', this)">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 2v20h4v-7h4v7h4V2H6z" />
+        </svg>
+        <span>Pants</span>
+    </button>
+</div>
+        <!-- Сетка товаров -->
         <div class="shop-grid" id="shop-grid"></div>
     </main>
 
@@ -38,20 +70,13 @@
 
         if(!currentUser) location.href = 'login.html';
 
+        // Загрузка данных
         function loadData() {
-            fetch('/api/profile', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ username: currentUser.username })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    currentUser = data.user;
-                    localStorage.setItem('tublox_user', JSON.stringify(data.user));
-                    renderShop();
-                }
-            });
+            // Имитация загрузки профиля (если нет реального бэкенда, берем из localStorage)
+            // В реальном проекте тут fetch('/api/profile'...)
+            
+            // Отрисовка
+            renderShop();
         }
 
         function switchTab(tab, btn) {
@@ -62,40 +87,84 @@
         }
 
         function renderShop() {
-            const u = currentUser;
-            document.getElementById('user-balance').innerText = u.balance;
-            const grid = document.getElementById('shop-grid');
-            grid.innerHTML = '';
+    const u = currentUser; 
+    document.getElementById('user-balance').innerText = u.balance.toLocaleString();
+    
+    document.getElementById('profile-display').innerHTML = `
+        <div class="nav-avatar">${getAvatarSVG(u)}</div>
+    `;
 
-            for (let itemId in window.GAME_ASSETS) {
-                const item = window.GAME_ASSETS[itemId];
-                if (item.type !== currentTab || item.price === 0) continue;
+    const grid = document.getElementById('shop-grid');
+    grid.innerHTML = '';
 
-                const owned = u.inventory.includes(itemId);
-                const card = document.createElement('div');
-                card.className = 'shop-card';
-                card.innerHTML = `
-                    <div class="item-icon">${getItemSVG(itemId)}</div>
-                    <h4>${item.name}</h4>
-                    <p class="price-tag">
-                        <img src="assets/vubs.png" style="width:20px;"> ${item.price}
-                    </p>
-                    <button class="btn-primary btn-shop" onclick="buy('${itemId}', ${item.price})" ${owned ? 'disabled style="opacity:0.5;"' : ''}>
-                        ${owned ? 'OWNED' : 'BUY'}
-                    </button>
-                `;
-                grid.appendChild(card);
-            }
+    const items = Object.entries(window.GAME_ASSETS)
+        .map(([id, item]) => ({ id, ...item }))
+        .filter(item => item.type === currentTab && item.price > 0)
+        .sort((a, b) => b.price - a.price);
+
+    items.forEach(item => {
+        const owned = u.inventory && u.inventory.includes(item.id);
+        
+        // Define rarity logic
+        const isUltra = item.price >= 50000;
+        const isLimited = item.price >= 1000 && item.price < 50000;
+
+        // Apply specific classes for styling
+        let rarityClass = '';
+        let badgeHtml = '';
+
+        if (isUltra) {
+            rarityClass = 'ultalimited';
+            badgeHtml = `<div class="limited-badge ultra">ULTRA LIMITED</div>`;
+        } else if (isLimited) {
+            rarityClass = 'limited';
+            badgeHtml = `<div class="limited-badge">LIMITED</div>`;
         }
+
+        const card = document.createElement('div');
+        card.className = `shop-card ${rarityClass} ${owned ? 'owned-card' : ''}`;
+        
+        card.innerHTML = `
+            ${badgeHtml}
+            <div class="card-top">
+                <div class="item-preview">${getItemSVG(item.id)}</div>
+            </div>
+            <div class="card-info">
+                <h4>${item.name}</h4>
+                ${owned 
+                    ? `<div class="owned-tag">OWNED</div>` 
+                    : `<div class="price-row">
+                         <img src="assets/vubs.png" alt="V"> <span>${item.price.toLocaleString()}</span>
+                       </div>`
+                }
+            </div>
+            <button class="btn-buy ${owned ? 'hidden' : ''}" onclick="buy('${item.id}', ${item.price})">
+                Purchase
+            </button>
+        `;
+        grid.appendChild(card);
+    });
+}
 
         function buy(id, price) {
             fetch('/api/buy', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ username: currentUser.username, itemId: id, price })
-            }).then(res => res.json()).then(data => {
-                if(data.success) loadData();
-                else alert(data.error);
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('tublox_user', JSON.stringify(data.user));
+                    
+                    // Звук покупки (опционально)
+                    // new Audio('assets/buy.mp3').play();
+                    
+                    renderShop();
+                } else {
+                    alert(data.error);
+                }
             });
         }
 

@@ -2,16 +2,20 @@ const socket = io();
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// --- ТЕНЕВОЙ СЛОЙ (ВАЖНО: Создаем его глобально) ---
+// UI Элементы HP
+const hpFill = document.getElementById('hpFill');
+const hpText = document.getElementById('hpText');
+
+// --- ТЕНЕВОЙ СЛОЙ ---
 const lightCanvas = document.createElement('canvas');
 const lightCtx = lightCanvas.getContext('2d');
 
-// --- НАСТРОЙКИ МИРА ---
+// --- НАСТРОЙКИ ---
 const urlParams = new URLSearchParams(window.location.search);
 const gameId = urlParams.get('id') || "game1";
 const WORLD_FLOOR_LIMIT = 2000;
 
-// --- ПЕРЕМЕННЫЕ ИГРОКА ---
+// --- ПЕРЕМЕННЫЕ ---
 let me = null;
 let players = {};
 let platforms = [];
@@ -25,7 +29,14 @@ let myInventory = [];
 let selectedSlot = 0; 
 const MAX_SLOTS = 3;
 
-// Ссылка на ассеты
+// --- БОЕВАЯ СИСТЕМА ---
+let isSwinging = false; 
+let swingTimer = 0;
+const SWING_DURATION = 10; // Длительность анимации (в кадрах)
+let lastAttackTime = 0;
+const ATTACK_COOLDOWN = 400; // мс
+
+// Ассеты
 const ASSETS_DB = window.GAME_ASSETS || {};
 
 // --- 1. АВТОРИЗАЦИЯ ---
@@ -42,25 +53,26 @@ socket.emit('join_game', {
 socket.on('init_game', (data) => {
     players = data.players || {};
     me = players[socket.id];
+    
     if (data.map && data.map.length > 0) {
         platforms = data.map.map(p => ({
             ...p,
-            x: Number(p.x),
-            y: Number(p.y),
+            x: Number(p.x), y: Number(p.y),
             w: Number(p.w) * (Number(p.scaleX) || 1),
             h: Number(p.h) * (Number(p.scaleY) || 1),
+            orgX: Number(p.x), orgY: Number(p.y),
+            timeOffset: Math.random() * 1000,
             anchored: (p.anchored !== undefined) ? p.anchored : true,
             collide: (p.collide !== undefined) ? p.collide : true,
-            text: p.text || "",
-            textSize: p.textSize || 20,
-            textColor: p.textColor || "#ffffff",
-            font: p.font || "Arial",
+            text: p.text || "", textSize: p.textSize || 20, textColor: p.textColor || "#ffffff",
             transparency: p.transparency || 0,
             dy: 0,
             special: p.special,
-            customSpeed: p.customSpeed,
-            customJump: p.customJump,
-            customScale: p.customScale
+            customSpeed: p.customSpeed, customJump: p.customJump, customScale: p.customScale,
+            spinSpeed: Number(p.spinSpeed) || 0, angle: 0,
+            moveSpeed: (Number(p.moveSpeed) < 0.1) ? 2 : Number(p.moveSpeed),
+            rangeX: Number(p.rangeX) || 0, rangeY: Number(p.rangeY) || 0,
+            currentDx: 0, currentDy: 0
         }));
     } else {
         platforms = [{ x: -1000, y: 600, w: 5000, h: 100, color: '#1e1e29', type: 'baseplate', collide: true, anchored: true }];
@@ -70,19 +82,19 @@ socket.on('init_game', (data) => {
 
 socket.on('player_spawn', (p) => { players[p.id] = p; });
 socket.on('player_update', (p) => {
-    if (players[p.id] && p.id !== socket.id) {
-        if (!players[p.id].dead) {
-            Object.assign(players[p.id], p);
-        }
+    if (players[p.id] && p.id !== socket.id && !players[p.id].dead) {
+        Object.assign(players[p.id], p);
     }
 });
 socket.on('player_leave', (id) => { delete players[id]; });
+
 socket.on('player_died_anim', (id) => {
     if (players[id]) {
         players[id].dead = true;
         createExplosion(players[id].x + 15, players[id].y + 30, players[id].color || '#fff');
     }
 });
+
 socket.on('player_respawned', (data) => {
     if (players[data.id]) {
         players[data.id].dead = false;
@@ -90,10 +102,40 @@ socket.on('player_respawned', (data) => {
         players[data.id].y = data.y;
         players[data.id].dy = 0;
         players[data.id].grounded = false;
+        players[data.id].heldItemId = null;
+        if (data.id === socket.id) {
+            me.hp = 100;
+            updateHpUI(100);
+        }
     }
 });
 
-// --- 3. ФИЗИКА И ЛОГИКА ---
+// --- ВАЖНОЕ ИСПРАВЛЕНИЕ: РЕСПАВН ПРИ СМЕРТИ ОТ МЕЧА ---
+socket.on('player_hp_update', (data) => {
+    if (players[data.id]) {
+        players[data.id].hp = data.hp;
+        
+        if (data.id === socket.id) {
+            me.hp = data.hp;
+            updateHpUI(data.hp);
+            createExplosion(me.x + 15, me.y + 30, '#ff0000'); // Кровь
+            
+            // ЕСЛИ ХП 0 И Я ЕЩЕ НЕ МЕРТВ -> ЗАПУСКАЕМ ПРОЦЕСС СМЕРТИ
+            if (me.hp <= 0 && !me.dead) {
+                die();
+            }
+        }
+    }
+});
+
+// --- 3. ЛОГИКА ---
+function updateHpUI(hp) {
+    if (hp < 0) hp = 0;
+    const pct = (hp / 100) * 100;
+    if (hpFill) hpFill.style.width = pct + '%';
+    if (hpText) hpText.innerText = Math.ceil(hp) + ' / 100';
+}
+
 function respawnPlayer() {
     if (!me) return;
     const spawn = platforms.find(p => p.type === 'spawn') || { x: 100, y: 500, w: 30 };
@@ -101,11 +143,13 @@ function respawnPlayer() {
     me.y = spawn.y - 70;
     me.dy = 0;
     me.dead = false;
+    me.hp = 100;
+    updateHpUI(100);
+    
+    // Сброс статов
     me.speed = 6;
     me.jumpPower = 15;
     me.scale = 1;
-    
-    // Сброс инвентаря
     myInventory = [];
     selectedSlot = 0;
     updateInventoryUI();
@@ -114,10 +158,12 @@ function respawnPlayer() {
 function die() {
     if (!me || me.dead) return;
     me.dead = true;
-    socket.emit('player_die');
+    socket.emit('player_die'); // Говорим серверу показать анимацию смерти
+    
+    // Таймер респавна
     setTimeout(() => {
         respawnPlayer();
-        socket.emit('player_respawn');
+        socket.emit('player_respawn'); // Говорим серверу вернуть нас
     }, 2000);
 }
 
@@ -130,10 +176,34 @@ function checkCollision(rect1, rect2) {
     );
 }
 
+function checkSpinnerCollision(playerRect, spinner) {
+    const cx = spinner.x + spinner.w / 2;
+    const cy = spinner.y + spinner.h / 2;
+    const px = playerRect.x + playerRect.w / 2;
+    const py = playerRect.y + playerRect.h / 2;
+    const dist = Math.sqrt((cx-px)**2 + (cy-py)**2);
+    return dist < (spinner.w / 2);
+}
+
 function updatePhysics() {
-    // 1. Физика предметов
+    const time = Date.now() / 1000;
+
     platforms.forEach(obj => {
-        if (obj.anchored) return;
+        if (obj.anchored) {
+            if (obj.special === 'mover') {
+                const wave = (Math.sin(time * obj.moveSpeed + obj.timeOffset) + 1) / 2;
+                const targetX = obj.orgX + (wave * obj.rangeX);
+                const targetY = obj.orgY + (wave * obj.rangeY);
+                obj.currentDx = targetX - obj.x;
+                obj.currentDy = targetY - obj.y;
+                obj.x = targetX;
+                obj.y = targetY;
+            }
+            if (obj.special === 'spinner') {
+                obj.angle += obj.spinSpeed * 0.05;
+            }
+            return;
+        }
         obj.dy = (obj.dy || 0) + 0.5;
         let nextY = obj.y + obj.dy;
         if (obj.collide === false) { obj.y = nextY; return; }
@@ -142,13 +212,9 @@ function updatePhysics() {
         for (let other of platforms) {
             if (obj === other) continue; 
             if (other.collide === false) continue;
-            
             if (obj.x < other.x + other.w && obj.x + obj.w > other.x) {
                 if (obj.y + obj.h <= other.y + 10 && nextY + obj.h >= other.y) {
-                    obj.y = other.y - obj.h;
-                    obj.dy = 0;
-                    landed = true;
-                    break; 
+                    obj.y = other.y - obj.h; obj.dy = 0; landed = true; break; 
                 }
             }
         }
@@ -156,7 +222,6 @@ function updatePhysics() {
         if (obj.y > WORLD_FLOOR_LIMIT + 500) { obj.anchored = true; obj.dy = 0; }
     });
 
-    // 2. Физика игрока
     if (!me || me.dead) return;
     if (!me.speed) me.speed = 6;
     if (!me.jumpPower) me.jumpPower = 15;
@@ -165,21 +230,18 @@ function updatePhysics() {
     const pW = 20 * me.scale;
     const pH = 60 * me.scale;
     const hitboxOffsetX = 15 - (pW / 2);
-
     let moved = false;
     me.isMoving = false;
 
-    // Движение
     let dx = 0;
     if (inputs.left) { dx = -me.speed; me.direction = -1; me.isMoving = true; }
     if (inputs.right) { dx = me.speed; me.direction = 1; me.isMoving = true; }
     
     if (dx !== 0) {
-        me.x += dx;
-        moved = true;
+        me.x += dx; moved = true;
         const playerHitboxX = { x: me.x + hitboxOffsetX, y: me.y, w: pW, h: pH };
         platforms.forEach(p => {
-            if (!p.collide) return;
+            if (!p.collide || p.special === 'spinner') return; 
             if (checkCollision(playerHitboxX, p)) {
                 if (dx > 0) me.x = p.x - hitboxOffsetX - pW;
                 else if (dx < 0) me.x = p.x + p.w - hitboxOffsetX;
@@ -194,6 +256,10 @@ function updatePhysics() {
     const playerHitboxY = { x: me.x + hitboxOffsetX, y: me.y, w: pW, h: pH };
 
     platforms.forEach(p => {
+        if (p.special === 'spinner') {
+            if (checkSpinnerCollision(playerHitboxY, p)) die();
+            return;
+        }
         if (checkCollision(playerHitboxY, p)) {
             if (p.special === 'kill') die();
             else if (p.special === 'speed_up') me.speed = (p.customSpeed !== undefined) ? Number(p.customSpeed) : 16;
@@ -205,17 +271,18 @@ function updatePhysics() {
                 const targetPart = platforms.find(other => other.id === p.target || other.special === 'teleport' && other !== p);
                 if (targetPart) { me.x = targetPart.x + (targetPart.w / 2) - 15; me.y = targetPart.y - 70; me.dy = 0; }
             }
-            // --- ПОДБОР ПРЕДМЕТА ---
-            else if (p.special === 'flashlight') {
-                const alreadyHas = myInventory.find(i => i.id === 'flashlight');
+            else if (p.special === 'flashlight' || p.special === 'sword') {
+                const itemId = p.special; 
+                const alreadyHas = myInventory.find(i => i.id === itemId);
                 if (!alreadyHas && myInventory.length < MAX_SLOTS) {
-                    myInventory.push({ 
-                        id: 'flashlight', 
-                        name: 'Flashlight', 
-                        icon: '🔦', 
-                        isActive: true, // <--- ВКЛЮЧАЕМ СРАЗУ ПРИ ПОДБОРЕ
+                    const newItem = { 
+                        id: itemId, 
+                        name: itemId === 'sword' ? 'Sword' : 'Flashlight', 
+                        icon: itemId === 'sword' ? '⚔️' : '🔦', 
+                        isActive: true, 
                         type: 'tool' 
-                    });
+                    };
+                    myInventory.push(newItem);
                     updateInventoryUI();
                     p.x = -99999;
                 }
@@ -224,7 +291,13 @@ function updatePhysics() {
         if (!p.collide) return;
         if (checkCollision(playerHitboxY, p)) {
             if (me.dy > 0) {
-                if (me.y - me.dy + pH <= p.y + 20) { me.y = p.y - pH; me.dy = 0; me.grounded = true; }
+                if (me.y - me.dy + pH <= p.y + 20) { 
+                    me.y = p.y - pH; me.dy = 0; me.grounded = true;
+                    if (p.special === 'mover') {
+                        me.x += p.currentDx; me.y += p.currentDy;
+                        if (Math.abs(p.currentDx) > 0.1) moved = true;
+                    }
+                }
             } else if (me.dy < 0) { me.y = p.y + p.h; me.dy = 0; }
         }
     });
@@ -232,14 +305,20 @@ function updatePhysics() {
     if (inputs.jump && me.grounded) { me.dy = -me.jumpPower; me.grounded = false; moved = true; }
     if (me.y > WORLD_FLOOR_LIMIT) die();
 
-    if (moved || me.dy !== 0 || me.grounded !== wasGrounded) {
+    const currentItem = myInventory[selectedSlot];
+    const itemToSend = (currentItem && currentItem.isActive) ? currentItem.id : null;
+    const attackState = isSwinging ? 1 : 0; 
+
+    if (moved || me.dy !== 0 || me.grounded !== wasGrounded || me.lastHeldItem !== itemToSend || me.lastAttack !== attackState) {
+        me.lastHeldItem = itemToSend;
+        me.lastAttack = attackState;
+        
         socket.emit('player_input', {
-            x: Math.round(me.x),
-            y: Math.round(me.y),
-            direction: me.direction,
-            isMoving: me.isMoving,
-            grounded: me.grounded,
-            scale: me.scale
+            x: Math.round(me.x), y: Math.round(me.y),
+            direction: me.direction, isMoving: me.isMoving,
+            grounded: me.grounded, scale: me.scale,
+            heldItemId: itemToSend,
+            isAttacking: isSwinging 
         });
     }
 }
@@ -275,60 +354,116 @@ function drawSvgComponent(ctx, svgContent, x, y, w, h) {
 
 function drawAvatar(ctx, p) {
     if (!p || p.dead) return;
-    ctx.save();
+    
+    // Получаем ассеты
+    const pantsData = getAsset(p, 'pants'); 
+    const shirtData = getAsset(p, 'shirt');
+    const faceData = getAsset(p, 'face'); 
+    const hatData = getAsset(p, 'hat');
+    
+    const pantsColor = pantsData.color || '#2d3436'; 
+    const shirtColor = shirtData.color || p.color || '#6c5ce7';
+    // Если штаны "робот", делаем основу черной
+    const displayPantsColor = pantsData.id === 'pants_robot' ? '#000' : pantsColor;
+
     const s = p.scale || 1;
-    ctx.translate(p.x + 15, p.y + (60 * s)); 
+    const SKIN_COLOR = '#ffccaa';
+
+    ctx.save();
+    // Смещаем координаты к ногам игрока
+    ctx.translate(p.x + 15, p.y + (60 * s));
     ctx.scale((p.direction || 1) * s, s);
 
-    const isMe = (p === me);
-    const heldItem = isMe ? myInventory[selectedSlot] : null;
-    const isHolding = heldItem !== undefined && heldItem !== null;
+    // --- ЛОГИКА АНИМАЦИИ ---
+    let heldItemId = null;
+    let isHolding = false;
+    let attacking = false;
+
+    if (p === me) {
+        const item = myInventory[selectedSlot];
+        if (item && item.isActive) { heldItemId = item.id; isHolding = true; }
+        if (isSwinging) attacking = true;
+    } else {
+        if (p.heldItemId) { heldItemId = p.heldItemId; isHolding = true; }
+        if (p.isAttacking) attacking = true;
+    }
 
     let legAngle = 0;
     let armAngle = 0;
     if (!p.grounded) { armAngle = (p.dy < 0) ? -2.8 : -2.5; legAngle = 0.5; } 
     else if (p.isMoving) { const c = Math.sin(Date.now() / 100); legAngle = c * 0.6; armAngle = c * 0.6; }
-    if (isHolding) { armAngle = -1.5; }
 
-    const SKIN_COLOR = '#ffccaa';
-    const pantsData = getAsset(p, 'pants');
-    const shirtData = getAsset(p, 'shirt');
-    const faceData = getAsset(p, 'face');
-    const hatData = getAsset(p, 'hat');
-    const pantsColor = pantsData.color || '#2d3436';
-    const shirtColor = shirtData.color || p.color || '#6c5ce7';
+    if (isHolding) { armAngle = -1.5; } 
+    if (attacking) {
+        const progress = (swingTimer / SWING_DURATION); 
+        armAngle = -2.0 + Math.sin(progress * Math.PI) * 3.5;
+    }
 
+    // ================= ОТРИСОВКА ТЕЛА =================
+
+    // 1. ЗАДНЯЯ РУКА
     ctx.fillStyle = SKIN_COLOR;
     ctx.save(); ctx.translate(6, -45); ctx.rotate(isHolding ? -armAngle : -armAngle); ctx.fillRect(-3, 0, 10, 22); ctx.restore();
 
-    ctx.fillStyle = pantsColor;
+    // 2. НОГИ
+    ctx.fillStyle = displayPantsColor;
     ctx.save(); ctx.translate(-5, -25); ctx.rotate(p.grounded ? -legAngle : -0.2); ctx.fillRect(-5, 0, 10, 25); ctx.restore();
     ctx.save(); ctx.translate(5, -25); ctx.rotate(p.grounded ? legAngle : 0.4); ctx.fillRect(-5, 0, 10, 25); ctx.restore();
+    if (pantsData.svg) drawSvgComponent(ctx, pantsData.svg, -12, -60, 24, 60);
 
+    // 3. ТУЛОВИЩЕ (РУБАШКА)
     ctx.fillStyle = shirtColor;
     ctx.fillRect(-11, -55, 22, 30);
     if (shirtData.svg) drawSvgComponent(ctx, shirtData.svg, -11, -55, 22, 30);
 
-    ctx.beginPath(); ctx.fillStyle = SKIN_COLOR; ctx.roundRect(-12, -80, 24, 25, 6); ctx.fill();
-    if (faceData.svg) drawSvgComponent(ctx, faceData.svg, -25, -100, 50, 50);
+    // 4. ГОЛОВА (УВЕЛИЧЕННАЯ ОСНОВА)
+    // Делаем саму голову чуть шире, чтобы большое лицо влезло (было 24px, стало 26px)
+    ctx.fillStyle = (faceData.name === 'The Void') ? '#000' : SKIN_COLOR;
+    ctx.beginPath(); 
+    ctx.roundRect(-13, -82, 26, 27, 8); // Чуть больше и круглее
+    ctx.fill();
+    
+    // --- ЛИЦО (BIG FACE) ---
+    // Было: w=24, h=24. Стало: w=30, h=30.
+    // Смещение X = -15 (половина от 30), Y = -83 (чуть выше)
+    if (faceData.svg) {
+        drawSvgComponent(ctx, faceData.svg, -30, -106, 60, 60);
+    }
 
+    // 5. ПЕРЕДНЯЯ РУКА
     ctx.fillStyle = SKIN_COLOR;
     ctx.save(); ctx.translate(-6, -45); ctx.rotate(armAngle); ctx.fillRect(-7, 0, 10, 22); 
-    
-    if (isHolding && heldItem.id === 'flashlight') {
-        ctx.save(); ctx.translate(-5, 18); ctx.rotate(Math.PI / 2); 
-        ctx.fillStyle = '#555'; ctx.fillRect(0, -3, 12, 6);
-        ctx.fillStyle = '#222'; ctx.fillRect(12, -4, 4, 8); 
-        if (heldItem.isActive) { ctx.fillStyle = '#f1c40f'; ctx.fillRect(16, -3, 2, 6); }
+
+    // ПРЕДМЕТЫ В РУКАХ
+    if (isHolding) {
+        ctx.save(); 
+        ctx.translate(-5, 18); 
+        ctx.rotate(Math.PI / 2); 
+        if (heldItemId === 'flashlight') {
+            ctx.fillStyle = '#555'; ctx.fillRect(0, -3, 12, 6);
+            ctx.fillStyle = '#222'; ctx.fillRect(12, -4, 4, 8); 
+            ctx.fillStyle = '#f1c40f'; ctx.fillRect(16, -3, 2, 6); 
+        } else if (heldItemId === 'sword') {
+            ctx.fillStyle = '#8e44ad'; ctx.fillRect(-5, -2, 10, 4);
+            ctx.fillStyle = '#f1c40f'; ctx.fillRect(5, -6, 4, 12);
+            ctx.fillStyle = '#bdc3c7'; ctx.fillRect(9, -3, 30, 6);
+        }
         ctx.restore();
     }
     ctx.restore();
 
-    if (hatData.svg && hatData.name !== 'None') drawSvgComponent(ctx, hatData.svg, -21, -105, 42, 42);
+    // 6. ШАПКА / АКСЕССУАРЫ (BIG HATS)
+    // Рисуем ПОВЕРХ всего.
+    // Было: 42x42. СТАЛО: 64x64 (Огромные!)
+    // Координаты подобраны так, чтобы шапка сидела на макушке, а не летала в космосе.
+    if (hatData.svg && hatData.name !== 'None') {
+        // X = -32 (центр от 64), Y = -118 (сдвиг вверх)
+        drawSvgComponent(ctx, hatData.svg, -32, -118, 64, 64);
+    }
+
     ctx.restore();
 }
 
-// --- ГЛАВНАЯ ОТРИСОВКА ---
 function render() {
     if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -343,17 +478,24 @@ function render() {
     ctx.translate(-cameraX, -cameraY);
 
     platforms.forEach(p => {
+        ctx.save();
         ctx.globalAlpha = 1 - p.transparency;
         ctx.fillStyle = p.color || '#1e1e29';
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        if (p.text) {
+        if (p.special === 'spinner') {
+            ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+            ctx.rotate(p.angle);
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        } else {
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+        }
+        if (p.text && p.special !== 'spinner') {
             ctx.fillStyle = p.textColor || 'white';
             ctx.font = `bold ${p.textSize || 20}px "${p.font || 'Arial'}"`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(p.text, p.x + p.w / 2, p.y + p.h / 2);
         }
         if (p.type === 'spawn') { ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.strokeRect(p.x, p.y, p.w, p.h); }
-        ctx.globalAlpha = 1;
+        ctx.restore(); ctx.globalAlpha = 1;
     });
 
     for (let id in players) {
@@ -362,6 +504,11 @@ function render() {
         if (!p.dead) {
             ctx.fillStyle = 'white'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center';
             ctx.fillText(p.username, p.x + 15, p.y - 95);
+            
+            if (p !== me && p.hp < 100) {
+                ctx.fillStyle = 'red'; ctx.fillRect(p.x - 5, p.y - 110, 40, 5);
+                ctx.fillStyle = '#2ecc71'; ctx.fillRect(p.x - 5, p.y - 110, 40 * (p.hp/100), 5);
+            }
         }
     }
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -370,48 +517,31 @@ function render() {
     }
     ctx.restore();
 
-    // --- ЛОГИКА ФОНАРИКА (ИСПРАВЛЕНАЯ) ---
     if (me && myInventory.length > 0) {
         const item = myInventory[selectedSlot];
-        
         if (item && item.id === 'flashlight' && item.isActive) {
-            // 1. Готовим холст света
-            lightCanvas.width = canvas.width;
-            lightCanvas.height = canvas.height;
-            
-            // 2. Очищаем его (Важно!)
+            lightCanvas.width = canvas.width; lightCanvas.height = canvas.height;
             lightCtx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 3. Заливаем черным (темнота)
             lightCtx.fillStyle = 'rgba(0, 0, 0, 0.95)';
             lightCtx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // 4. Включаем режим "Ластик"
             lightCtx.globalCompositeOperation = 'destination-out';
-
-            const screenX = (me.x + 15) - cameraX;
-            const screenY = (me.y + 30) - cameraY;
-
-            // 5. Рисуем конус света
+            const screenX = (me.x + 15) - cameraX; const screenY = (me.y + 30) - cameraY;
             const rad = lightCtx.createRadialGradient(screenX, screenY, 10, screenX, screenY, 600);
-            rad.addColorStop(0, 'rgba(0,0,0,1)'); // Прозрачно (стираем 100%)
-            rad.addColorStop(1, 'rgba(0,0,0,0)'); // Темно (не стираем)
-
-            lightCtx.fillStyle = rad;
-            lightCtx.beginPath();
-            lightCtx.moveTo(screenX, screenY);
-            if (me.direction === 1) lightCtx.arc(screenX, screenY, 600, -0.5, 0.5); 
-            else lightCtx.arc(screenX, screenY, 600, Math.PI - 0.5, Math.PI + 0.5);
-            lightCtx.lineTo(screenX, screenY);
-            lightCtx.fill();
-
-            // 6. Круг вокруг игрока
-            lightCtx.beginPath();
-            lightCtx.arc(screenX, screenY, 80, 0, Math.PI * 2);
-            lightCtx.fill();
-
-            // 7. Рисуем готовый слой света поверх игры
+            rad.addColorStop(0, 'rgba(0,0,0,1)'); rad.addColorStop(1, 'rgba(0,0,0,0)'); 
+            lightCtx.fillStyle = rad; lightCtx.beginPath(); lightCtx.moveTo(screenX, screenY);
+            if (me.direction === 1) lightCtx.arc(screenX, screenY, 600, -0.5, 0.5); else lightCtx.arc(screenX, screenY, 600, Math.PI - 0.5, Math.PI + 0.5);
+            lightCtx.lineTo(screenX, screenY); lightCtx.fill();
+            lightCtx.beginPath(); lightCtx.arc(screenX, screenY, 80, 0, Math.PI * 2); lightCtx.fill();
             ctx.drawImage(lightCanvas, 0, 0);
+        }
+    }
+
+    // Анимация удара
+    if (isSwinging) {
+        swingTimer++;
+        if (swingTimer > SWING_DURATION) {
+            isSwinging = false;
+            swingTimer = 0;
         }
     }
 
@@ -435,28 +565,49 @@ window.addEventListener('keyup', e => {
     if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') inputs.jump = false;
 });
 
-// КЛИК (Исправленный)
+// КЛИК
 window.addEventListener('mousedown', (e) => {
-    // Не кликать сквозь UI
     if (e.target.closest('.hotbar-container') || e.target.closest('.chat-wrapper') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
     
-    // Переключение предмета
     if (myInventory && myInventory[selectedSlot]) {
         const item = myInventory[selectedSlot];
-        if (item.type === 'tool') {
+        
+        // УДАР МЕЧОМ
+        if (item.id === 'sword') {
+            const now = Date.now();
+            if (now - lastAttackTime > ATTACK_COOLDOWN) {
+                lastAttackTime = now;
+                isSwinging = true; 
+                swingTimer = 0;
+                
+                for (let id in players) {
+                    if (id === socket.id || players[id].dead) continue;
+                    const p = players[id];
+                    const dist = Math.sqrt((me.x - p.x)**2 + (me.y - p.y)**2);
+                    if (dist < 60) {
+                        const dirToEnemy = (p.x > me.x) ? 1 : -1;
+                        if (dirToEnemy === me.direction) {
+                            socket.emit('damage_player', id);
+                            createExplosion(p.x+15, p.y+30, '#fff'); 
+                        }
+                    }
+                }
+            }
+        }
+        // ИНСТРУМЕНТЫ
+        else if (item.type === 'tool') {
             item.isActive = !item.isActive;
-            console.log("CLick! Active:", item.isActive);
             updateInventoryUI();
         }
     }
 });
+
 window.addEventListener('wheel', (e) => {
     if (e.deltaY > 0) selectedSlot = (selectedSlot + 1) % MAX_SLOTS;
     else selectedSlot = (selectedSlot - 1 + MAX_SLOTS) % MAX_SLOTS;
     updateInventoryUI();
 });
 
-// --- UI ФУНКЦИИ ---
 function updateInventoryUI() {
     const container = document.getElementById('hotbar');
     if (!container) return;
@@ -467,7 +618,7 @@ function updateInventoryUI() {
         div.className = `slot ${i === selectedSlot ? 'selected' : ''}`;
         if (item) {
             div.innerHTML = `<span class="slot-number">${i + 1}</span> ${item.icon}`;
-            if (item.isActive) div.innerHTML += `<div class="item-active-indicator" style="display:block"></div>`;
+            if (item.isActive && item.id !== 'sword') div.innerHTML += `<div class="item-active-indicator" style="display:block"></div>`;
         } else {
             div.innerHTML = `<span class="slot-number">${i + 1}</span>`;
         }
@@ -475,6 +626,7 @@ function updateInventoryUI() {
         container.appendChild(div);
     }
 }
+
 function createExplosion(x, y, color) {
     for (let i = 0; i < 20; i++) {
         particles.push({
@@ -487,7 +639,7 @@ function createExplosion(x, y, color) {
     }
 }
 
-// ЧАТ
+// CHAT
 const chatInput = document.getElementById('chatInput');
 const chatBtn = document.getElementById('chatSendBtn');
 const msgsDiv = document.getElementById('msgs');
@@ -504,5 +656,6 @@ socket.on('new_msg', (data) => {
     msgsDiv.appendChild(div);
     msgsDiv.scrollTop = msgsDiv.scrollHeight;
 });
+
 updateInventoryUI();
 render();
