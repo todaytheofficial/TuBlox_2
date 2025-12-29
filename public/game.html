@@ -133,7 +133,7 @@
         function leaveGame() { window.location.href = 'index.html'; }
         
         function resetChar() {
-            if (typeof resetCharacterLocal === 'function') resetCharacterLocal();
+            if (typeof die === 'function') die();
             closeMenu();
         }
 
