@@ -58,25 +58,41 @@ async function loginUser(username, password) {
  */
 async function getSession() {
     const json = localStorage.getItem(STORAGE_KEY);
-    if (!json) return null;
+    
+    // Проверка: если данных нет или там лежит строка "undefined"
+    if (!json || json === "undefined" || json === "null") {
+        return null;
+    }
 
-    let user = JSON.parse(json);
+    let user;
+    try {
+        user = JSON.parse(json);
+    } catch (e) {
+        console.error("Ошибка парсинга сессии:", e);
+        return null;
+    }
 
-    // Пробуем обновить данные с сервера (вдруг мы купили что-то в другой вкладке)
+    if (!user || !user.username) return null;
+
+    // Пробуем обновить данные с сервера
     try {
         const response = await fetch('/api/profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user.username })
         });
+
+        // Проверяем, что ответ сервера — это JSON, а не ошибка 404/500
+        if (!response.ok) throw new Error("Server error");
+        
         const data = await response.json();
         
-        if (data.success) {
+        if (data.success && data.user) {
             user = data.user;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(user)); // Обновляем кеш
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(user)); 
         }
     } catch (e) {
-        console.warn("Сервер недоступен, используем локальные данные");
+        console.warn("Используем локальные данные (оффлайн или ошибка сервера)");
     }
 
     return user;
