@@ -88,6 +88,9 @@ function filterContent(text) {
 
 const hash = (str) => String(str).split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
 
+// --- 5. SOCKETS (Объявляем раньше, чтобы видеть переменную gamesOnline) ---
+let gamesOnline = {}; 
+
 // --- 4. API ЭНДПОИНТЫ ---
 
 // === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ===
@@ -98,37 +101,46 @@ app.post('/api/save_game_data', async (req, res) => {
 
         const mapJson = JSON.stringify(map || []);
 
-        // 1. Проверяем, есть ли игра уже в базе, чтобы получить её текущее имя
+        // 1. Проверяем, есть ли игра уже в базе
         const [existing] = await db.execute('SELECT name FROM games WHERE id = ?', [gameId]);
         
-        let nameToSave = "New Game"; // Дефолт, если игра новая и имени нет
+        let nameToSave = "New Game"; 
 
         // 2. Логика выбора имени
         if (name && name.trim().length > 0) {
-            // Если клиент прислал имя - фильтруем и используем
             let filtered = filterContent(name.trim());
-            // Если фильтр не удалил всё имя полностью
             if (filtered && filtered.replace(/#/g, '') !== "") {
                 nameToSave = filtered;
             } else if (existing.length > 0) {
-                // Если фильтр все стер, но игра была - откатываемся на старое имя
                 nameToSave = existing[0].name;
             }
         } else {
-            // Если имя НЕ прислали (пустая строка или null)
             if (existing.length > 0) {
-                nameToSave = existing[0].name; // Оставляем старое имя из базы
+                nameToSave = existing[0].name;
             } else {
-                nameToSave = "New Game"; // Игры не было, ставим дефолт
+                nameToSave = "New Game"; 
             }
         }
 
-        // 3. Сохраняем с правильным именем
+        // 3. Сохраняем в БД
         await db.execute(`
             INSERT INTO games (id, author, name, map, visits) 
             VALUES (?, ?, ?, ?, 0) 
             ON DUPLICATE KEY UPDATE map = VALUES(map), name = VALUES(name)
         `, [gameId, username, nameToSave, mapJson]);
+
+        // --- ВАЖНОЕ ИСПРАВЛЕНИЕ ТУТ ---
+        // Если игра сейчас запущена (есть в памяти сервера), мы обновляем её "на лету"
+        if (gamesOnline[gameId]) {
+            console.log(`Live update for game: ${gameId}`);
+            gamesOnline[gameId].map = map || [];
+            gamesOnline[gameId].name = nameToSave;
+            
+            // Если ты хочешь, чтобы карта обновилась у игроков БЕЗ перезагрузки страницы,
+            // раскомментируй строку ниже (но это респнет всех игроков):
+            // io.to(gameId).emit('init_game', { map: gamesOnline[gameId].map, players: gamesOnline[gameId].players });
+        }
+        // -------------------------------
 
         res.json({ success: true });
     } catch (err) {
@@ -253,9 +265,7 @@ app.post('/api/equip', async (req, res) => {
     } catch (e) { res.status(500).json({success: false}); }
 });
 
-// --- 5. SOCKETS ---
-let gamesOnline = {}; 
-
+// --- ЛОГИКА СЕРВЕРА (Начисление валюты) ---
 setInterval(async () => {
     for (const gameId in gamesOnline) {
         const game = gamesOnline[gameId];
@@ -290,6 +300,8 @@ io.on('connection', (socket) => {
             const gameDB = gRows[0];
             const equipped = JSON.parse(user.equipped || '{}');
 
+            // --- ВОТ ТУТ СЕРВЕР ИСПОЛЬЗУЕТ КЕШ ---
+            // Если игра уже в памяти, он НЕ берет её из gameDB
             if (!gamesOnline[gameId]) {
                 gamesOnline[gameId] = { ...gameDB, map: JSON.parse(gameDB.map || '[]'), players: {} };
             }
@@ -365,6 +377,11 @@ io.on('connection', (socket) => {
         if (socket.gameId && gamesOnline[socket.gameId]) {
             delete gamesOnline[socket.gameId].players[socket.id];
             io.to(socket.gameId).emit('player_leave', socket.id);
+            
+            // ОПЦИОНАЛЬНО: Чистим память, если игроков 0 (тогда при следующем входе карта точно обновится)
+            if (Object.keys(gamesOnline[socket.gameId].players).length === 0) {
+                delete gamesOnline[socket.gameId];
+            }
         }
     });
 });
