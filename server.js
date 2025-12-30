@@ -22,9 +22,17 @@ const dbConfig = {
     queueLimit: 0
 };
 
-// Создаем пул соединений (это решит проблему закрытого стейта)
-const pool = mysql.createPool(dbConfig);
+// Код поймет, если ты передал целую ссылку или отдельные части
+const pool = mysql.createPool(process.env.DATABASE_URL || {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'TuBloxDB',
+    port: process.env.DB_PORT || 3306,
+    ssl: { rejectUnauthorized: false }
+});
 const db = pool.promise();
+
 
 // --- 2. ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ---
 async function initDB() {
