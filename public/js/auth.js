@@ -1,10 +1,7 @@
-// Ключ, под которым храним юзера в браузере (чтобы не входить каждый раз)
+// Ключ для localStorage
 const STORAGE_KEY = 'tublox_user';
 
-/**
- * РЕГИСТРАЦИЯ
- * Отправляет данные на сервер /api/register
- */
+// РЕГИСТРАЦИЯ
 async function registerUser(username, password, color) {
     try {
         const response = await fetch('/api/register', {
@@ -16,7 +13,6 @@ async function registerUser(username, password, color) {
         const data = await response.json();
 
         if (data.success) {
-            // Сохраняем пользователя в браузере
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
             return data.user;
         } else {
@@ -27,10 +23,7 @@ async function registerUser(username, password, color) {
     }
 }
 
-/**
- * ВХОД
- * Отправляет данные на сервер /api/login
- */
+// ВХОД
 async function loginUser(username, password) {
     try {
         const response = await fetch('/api/login', {
@@ -52,29 +45,18 @@ async function loginUser(username, password) {
     }
 }
 
-/**
- * ПОЛУЧЕНИЕ СЕССИИ
- * Берет данные из LocalStorage и обновляет их с сервера (чтобы баланс был актуальным)
- */
+// ПОЛУЧЕНИЕ СЕССИИ (Обновление с сервера)
 async function getSession() {
     const json = localStorage.getItem(STORAGE_KEY);
-    
-    // Проверка: если данных нет или там лежит строка "undefined"
-    if (!json || json === "undefined" || json === "null") {
-        return null;
-    }
+    if (!json || json === "undefined" || json === "null") return null;
 
     let user;
-    try {
-        user = JSON.parse(json);
-    } catch (e) {
-        console.error("Ошибка парсинга сессии:", e);
-        return null;
-    }
+    try { user = JSON.parse(json); } 
+    catch (e) { return null; }
 
     if (!user || !user.username) return null;
 
-    // Пробуем обновить данные с сервера
+    // Обновляем данные с сервера (баланс, ID и т.д.)
     try {
         const response = await fetch('/api/profile', {
             method: 'POST',
@@ -82,38 +64,22 @@ async function getSession() {
             body: JSON.stringify({ username: user.username })
         });
 
-        // Проверяем, что ответ сервера — это JSON, а не ошибка 404/500
-        if (!response.ok) throw new Error("Server error");
-        
-        const data = await response.json();
-        
-        if (data.success && data.user) {
-            user = data.user;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(user)); 
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+                user = data.user;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(user)); 
+            }
         }
     } catch (e) {
-        console.warn("Используем локальные данные (оффлайн или ошибка сервера)");
+        // Оффлайн - используем старые данные
     }
 
     return user;
 }
 
-/**
- * ВЫХОД
- */
 function logoutUser() {
     localStorage.removeItem(STORAGE_KEY);
-    // Удаляем UID дюпа, чтобы сбросить сессию игры
     localStorage.removeItem('tublox_uid'); 
     window.location.href = 'login.html';
-}
-
-// Вспомогательная функция для генерации UID (для защиты от дюпа в game.js)
-function getUniqueId() {
-    let uid = localStorage.getItem('tublox_uid');
-    if (!uid) {
-        uid = 'user_' + Date.now() + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('tublox_uid', uid);
-    }
-    return uid;
 }

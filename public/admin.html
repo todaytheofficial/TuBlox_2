@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TuBlox Admin Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { padding: 20px; background: #111; color: #fff; }
+        .admin-section { background: #222; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #444; }
+        h2 { color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-top: 0; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+        th { background: #333; }
+        
+        .action-btn { padding: 5px 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+        .btn-ban { background: #d63031; color: white; }
+        .btn-unban { background: #00b894; color: white; }
+        .btn-vubs { background: #fdcb6e; color: black; }
+        .btn-admin { background: #6c5ce7; color: white; }
+        
+        input[type="number"] { width: 80px; padding: 5px; background: #333; border: 1px solid #555; color: white; }
+    </style>
+</head>
+<body>
+    <header style="display:flex; justify-content:space-between; align-items:center;">
+        <h1 style="color:white;">🛡️ Admin Panel</h1>
+        <button class="btn-primary" onclick="window.location.href='index.html'" style="width:auto;">Exit</button>
+    </header>
+
+    <div class="admin-section">
+        <h2>👥 Users Management</h2>
+        <input type="text" id="search-user" placeholder="Search user..." style="padding:10px; margin-bottom:10px; width:300px; background:#333; border:1px solid #555; color:white;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Balance</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-table"></tbody>
+        </table>
+    </div>
+
+    <div class="admin-section">
+        <h2>🎮 Games Management</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Author</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="games-table"></tbody>
+        </table>
+    </div>
+
+    <div class="admin-section">
+        <h2>🚫 Banned IPs</h2>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" id="ip-to-ban" placeholder="Enter IP address" style="padding:10px; background:#333; border:1px solid #555; color:white;">
+            <button class="btn-ban action-btn" onclick="banIpManual()">Ban IP</button>
+        </div>
+        <ul id="ip-list" style="list-style:none; padding:0;"></ul>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        async function init() {
+            const stored = localStorage.getItem('tublox_user');
+            if (!stored) window.location.href = 'index.html';
+            currentUser = JSON.parse(stored);
+
+            if (!currentUser.is_admin) {
+                // Двойная проверка через API
+                try {
+                    const res = await fetch('/api/get_user_by_id', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ id: currentUser.id })
+                    });
+                    const data = await res.json();
+                    if(!data.user.is_admin) {
+                        alert("Access Denied!");
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    currentUser = data.user; // Обновим данные
+                } catch(e) { window.location.href = 'index.html'; return; }
+            }
+
+            loadData();
+        }
+
+        async function loadData() {
+            const res = await fetch('/api/admin/get_data', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ adminName: currentUser.username })
+            });
+            const data = await res.json();
+            if(data.success) {
+                renderUsers(data.users);
+                renderGames(data.games);
+                renderIps(data.bannedIps);
+            } else {
+                alert(data.error);
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('users-table');
+            tbody.innerHTML = '';
+            users.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${u.id}</td>
+                    <td>${u.username}</td>
+                    <td>${u.balance}</td>
+                    <td>${u.is_admin ? '<span style="color:#6c5ce7; font-weight:bold;">Admin</span>' : 'User'}</td>
+                    <td>${u.is_banned ? '<span style="color:red; font-weight:bold;">BANNED</span>' : '<span style="color:#00b894;">Active</span>'}</td>
+                    <td>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <input type="number" id="vubs-${u.username}" placeholder="Amt">
+                            <button class="action-btn btn-vubs" onclick="giveVubs('${u.username}')">+</button>
+                            <button class="action-btn ${u.is_banned ? 'btn-unban' : 'btn-ban'}" onclick="toggleBan('${u.username}', ${!u.is_banned})">
+                                ${u.is_banned ? 'Unban' : 'Ban'}
+                            </button>
+                            ${!u.is_admin ? `<button class="action-btn btn-admin" onclick="setAdmin('${u.username}', 1)">Make Admin</button>` : `<button class="action-btn" style="background:#444; color:white;" onclick="setAdmin('${u.username}', 0)">Rem Admin</button>`}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderGames(games) {
+            const tbody = document.getElementById('games-table');
+            tbody.innerHTML = '';
+            games.forEach(g => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${g.id}</td>
+                    <td>${g.name}</td>
+                    <td>${g.author}</td>
+                    <td>${g.is_blocked ? '<span style="color:red; font-weight:bold;">BLOCKED</span>' : '<span style="color:#00b894;">Public</span>'}</td>
+                    <td>
+                        <button class="action-btn ${g.is_blocked ? 'btn-unban' : 'btn-ban'}" onclick="toggleGameBlock('${g.id}', ${!g.is_blocked})">
+                            ${g.is_blocked ? 'Unblock' : 'Block Game'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderIps(ips) {
+            const list = document.getElementById('ip-list');
+            list.innerHTML = '';
+            ips.forEach(i => {
+                const li = document.createElement('li');
+                li.style.background = '#333';
+                li.style.padding = '5px';
+                li.style.marginBottom = '5px';
+                li.textContent = `🚫 ${i.ip} (${i.reason})`;
+                list.appendChild(li);
+            });
+        }
+
+        // --- ACTIONS ---
+
+        async function giveVubs(target) {
+            const amt = document.getElementById(`vubs-${target}`).value;
+            if(!amt) return;
+            await post('/api/admin/give_vubs', { targetUsername: target, amount: amt });
+        }
+
+        async function toggleBan(target, status) {
+            if(confirm(`Are you sure you want to ${status ? 'BAN' : 'UNBAN'} ${target}?`)) {
+                await post('/api/admin/toggle_ban', { targetUsername: target, status });
+            }
+        }
+
+        async function setAdmin(target, status) {
+            if(confirm(`Change admin status for ${target}?`)) {
+                await post('/api/admin/set_admin', { targetUsername: target, status });
+            }
+        }
+
+        async function toggleGameBlock(id, status) {
+            if(confirm(`Change block status for game ${id}?`)) {
+                await post('/api/admin/toggle_game_block', { gameId: id, status });
+            }
+        }
+
+        async function banIpManual() {
+            const ip = document.getElementById('ip-to-ban').value;
+            if(!ip) return;
+            await post('/api/admin/ban_ip', { ip });
+        }
+
+        async function post(url, body) {
+            body.adminName = currentUser.username;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if(data.success) loadData();
+            else alert(data.error);
+        }
+
+        init();
+    </script>
+</body>
+</html>
