@@ -443,5 +443,40 @@ function sendMessage() { const t = chatInput.value.trim(); if(t) { socket.emit('
 if(chatBtn) chatBtn.onclick=sendMessage; if(chatInput) chatInput.onkeydown=e=>{if(e.key==='Enter')sendMessage()};
 socket.on('new_msg', d => { const div=document.createElement('div'); div.innerHTML=`<b>${d.user}:</b> ${d.text}`; msgsDiv.appendChild(div); msgsDiv.scrollTop=msgsDiv.scrollHeight; });
 
+// --- МОБИЛЬНОЕ УПРАВЛЕНИЕ ---
+function setupMobileControls() {
+    // Проверка на мобилку или маленький экран
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 850;
+
+    if (isMobile) {
+        document.getElementById('mobileControls').style.display = 'flex';
+        
+        // Функция привязки событий (Touch)
+        const bindBtn = (id, key) => {
+            const btn = document.getElementById(id);
+            // touchstart - нажали
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Чтобы не выделяло текст и не скроллило
+                inputs[key] = true;
+                btn.style.background = 'rgba(255, 255, 255, 0.3)';
+            }, { passive: false });
+            
+            // touchend - отпустили
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                inputs[key] = false;
+                btn.style.background = 'rgba(255, 255, 255, 0.1)';
+            }, { passive: false });
+        };
+
+        bindBtn('btnL', 'left');
+        bindBtn('btnR', 'right');
+        bindBtn('btnJ', 'jump');
+    }
+}
+
+// Запускаем настройку управления
+setupMobileControls();
+
 updateInventoryUI();
 render();

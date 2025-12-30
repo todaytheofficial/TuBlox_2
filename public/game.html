@@ -6,151 +6,50 @@
     <title>TuBlox Game</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        body { overflow: hidden; background: #0b0b10; touch-action: none; font-family: 'Segoe UI', sans-serif; }
+        body { overflow: hidden; background: #0b0b10; touch-action: none; font-family: 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; }
         canvas { display: block; }
-        
+
         /* CHAT */
-        .chat-wrapper {
-            position: absolute; top: 60px; left: 10px;
-            width: 300px; height: 220px;
-            display: flex; flex-direction: column;
-            pointer-events: none; z-index: 100;
-        }
-        /* --- INVENTORY / HOTBAR --- */
-.hotbar-container {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 8px;
-    border-radius: 10px;
-    backdrop-filter: blur(4px);
-    z-index: 90; /* Ниже чата, но выше канваса */
-    pointer-events: auto;
-}
-
-.slot {
-    width: 50px;
-    height: 50px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: white;
-    position: relative;
-    transition: 0.1s;
-    cursor: pointer;
-}
-
-.slot.selected {
-    border-color: #f1c40f;
-    background: rgba(241, 196, 15, 0.2);
-    transform: scale(1.1);
-}
-
-.slot-number {
-    position: absolute;
-    top: 2px;
-    left: 4px;
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.item-active-indicator {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 6px;
-    height: 6px;
-    background: #2ecc71;
-    border-radius: 50%;
-    box-shadow: 0 0 5px #2ecc71;
-    display: none;
-}
-
-/* --- HP BAR --- */
-.hp-container {
-    position: absolute;
-    top: 60px;
-    right: 10px;
-    width: 200px;
-    height: 24px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    z-index: 95;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.hp-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #2ecc71, #27ae60);
-    width: 100%; /* Меняется через JS */
-    transition: width 0.2s ease-out;
-}
-
-.hp-text {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    text-shadow: 1px 1px 0 #000;
-}
-        .chat-messages {
-            flex: 1; overflow-y: auto; background: rgba(0, 0, 0, 0.5); 
-            border-radius: 8px; padding: 5px; margin-bottom: 5px;
-            color: white; font-size: 13px; pointer-events: auto; scrollbar-width: none;
-        }
+        .chat-wrapper { position: absolute; top: 60px; left: 10px; width: 300px; height: 220px; display: flex; flex-direction: column; pointer-events: none; z-index: 100; }
+        .chat-messages { flex: 1; overflow-y: auto; background: rgba(0, 0, 0, 0.5); border-radius: 8px; padding: 5px; margin-bottom: 5px; color: white; font-size: 13px; pointer-events: auto; scrollbar-width: none; }
         .chat-input-area { display: flex; gap: 5px; pointer-events: auto; }
         #chatInput { flex: 1; padding: 8px; border-radius: 5px; border: none; background: rgba(255,255,255,0.8); outline: none; }
         #chatSendBtn { padding: 0 15px; border: none; border-radius: 5px; background: #b026ff; color: white; cursor: pointer; font-weight: bold; }
 
-        /* MENU BUTTON */
-        .menu-btn {
-            position: absolute; top: 10px; left: 10px;
-            width: 40px; height: 40px; background: #1e1e24; border: 2px solid #5d00ff;
-            border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            z-index: 200; pointer-events: auto; transition: 0.2s;
+        /* --- INVENTORY / HOTBAR --- */
+        .hotbar-container { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            display: flex; gap: 8px; background: rgba(0, 0, 0, 0.6); padding: 8px; 
+            border-radius: 10px; backdrop-filter: blur(4px); z-index: 90; pointer-events: auto; 
+            transition: bottom 0.3s;
         }
+        .slot { width: 50px; height: 50px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; position: relative; transition: 0.1s; cursor: pointer; }
+        .slot.selected { border-color: #f1c40f; background: rgba(241, 196, 15, 0.2); transform: scale(1.1); }
+        .slot-number { position: absolute; top: 2px; left: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.6); }
+        .item-active-indicator { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; background: #2ecc71; border-radius: 50%; box-shadow: 0 0 5px #2ecc71; display: none; }
+
+        /* --- HP BAR --- */
+        .hp-container { position: absolute; top: 60px; right: 10px; width: 200px; height: 24px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 6px; z-index: 95; pointer-events: none; overflow: hidden; }
+        .hp-fill { height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 100%; transition: width 0.2s ease-out; }
+        .hp-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 0 #000; }
+
+        /* MENU BUTTON */
+        .menu-btn { position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; background: #1e1e24; border: 2px solid #5d00ff; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; pointer-events: auto; transition: 0.2s; }
         .menu-btn:hover { background: #5d00ff; }
         .menu-btn svg { fill: white; width: 24px; height: 24px; }
 
         /* MENU OVERLAY */
-        .game-menu-overlay {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px);
-            z-index: 1000; align-items: center; justify-content: center;
-        }
-        .menu-box {
-            background: #1e1e24; width: 350px; border-radius: 12px; padding: 20px;
-            border: 1px solid #333; box-shadow: 0 0 30px rgba(93, 0, 255, 0.3);
-            display: flex; flex-direction: column; gap: 15px;
-        }
+        .game-menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; }
+        .menu-box { background: #1e1e24; width: 350px; border-radius: 12px; padding: 20px; border: 1px solid #333; box-shadow: 0 0 30px rgba(93, 0, 255, 0.3); display: flex; flex-direction: column; gap: 15px; }
         .menu-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 5px; }
         .menu-header h2 { margin: 0; color: white; font-size: 20px; }
         .close-menu { background: none; border: none; color: #888; font-size: 24px; cursor: pointer; }
         .close-menu:hover { color: white; }
-
         .player-list-box { background: #111; border-radius: 8px; height: 200px; overflow-y: auto; padding: 10px; border: 1px solid #333; }
         .player-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #222; }
         .player-avatar-svg { width: 30px; height: 30px; border-radius: 5px; overflow: hidden; background: #333; }
         .player-name { color: #ddd; font-size: 14px; font-weight: bold; }
         .player-you { color: #5d00ff; margin-left: auto; font-size: 10px; }
-
         .menu-actions { display: flex; flex-direction: column; gap: 10px; }
         .btn-menu { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-reset { background: #333; color: white; }
@@ -158,34 +57,61 @@
         .btn-leave { background: #d32f2f; color: white; }
         .btn-leave:hover { background: #b71c1c; }
 
-        .mobile-ui { display: none; position: absolute; bottom: 30px; width: 100%; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; z-index: 100; }
-        .control-btn { pointer-events: auto; width: 70px; height: 70px; background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px); border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .control-btn svg { fill: white; width: 32px; height: 32px; }
+        /* --- MOBILE CONTROLS --- */
+        .mobile-ui {
+            display: none; /* Скрыто на ПК по умолчанию */
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .control-btn {
+            pointer-events: auto;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .control-btn:active { background: rgba(255, 255, 255, 0.3); }
+        .control-btn svg { fill: white; width: 40px; height: 40px; opacity: 0.8; }
+
+        /* АДАПТАЦИЯ ПОД МОБИЛКИ */
+        @media (max-width: 800px) {
+            .mobile-ui { display: flex; } /* Показываем кнопки */
+            .hotbar-container { bottom: 110px; } /* Поднимаем инвентарь выше */
+            .chat-wrapper { width: 200px; height: 150px; top: 50px; } /* Уменьшаем чат */
+            .hp-container { width: 150px; top: 10px; right: 60px; } /* Сдвигаем HP */
+            .menu-btn { top: 10px; right: 10px; left: auto; } /* Меню справа сверху */
+        }
     </style>
 </head>
 <body>
+    <!-- Кнопка меню (на мобилках справа) -->
     <button class="menu-btn" onclick="openMenu()">
-        <svg viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9M12 4.15L6.04 7.5 12 10.85l5.96-3.35L12 4.15M5 15.91l6 3.38v-6.71L5 9.21v6.7m14 0v-6.7l-6 3.38v6.71l6-3.38z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
     </button>
 
-    <div class="hotbar-container" id="hotbar">
-    <!-- Слоты будут генерироваться через JS -->
-    <div class="slot selected">
-        <span class="slot-number">1</span>
-    </div>
-    <div class="slot">
-        <span class="slot-number">2</span>
-    </div>
-    <div class="slot">
-        <span class="slot-number">3</span>
-    </div>
-</div>
+    <!-- Инвентарь -->
+    <div class="hotbar-container" id="hotbar"></div>
 
-<div class="hp-container">
-    <div class="hp-fill" id="hpFill"></div>
-    <span class="hp-text" id="hpText">100 / 100</span>
-</div>
+    <!-- HP -->
+    <div class="hp-container">
+        <div class="hp-fill" id="hpFill"></div>
+        <span class="hp-text" id="hpText">100 / 100</span>
+    </div>
 
+    <!-- Меню -->
     <div id="game-menu" class="game-menu-overlay">
         <div class="menu-box">
             <div class="menu-header">
@@ -207,6 +133,7 @@
         </div>
     </div>
 
+    <!-- Чат -->
     <div class="chat-wrapper">
         <div class="chat-messages" id="msgs"></div>
         <div class="chat-input-area">
@@ -215,39 +142,32 @@
         </div>
     </div>
 
+    <!-- Canvas игры -->
     <canvas id="gameCanvas"></canvas>
 
+    <!-- МОБИЛЬНОЕ УПРАВЛЕНИЕ -->
     <div class="mobile-ui" id="mobileControls">
-        <div style="display:flex; gap:15px;">
+        <div style="display:flex; gap:20px;">
             <div class="control-btn" id="btnL"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></div>
             <div class="control-btn" id="btnR"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></div>
         </div>
-        <div class="control-btn" id="btnJ"><svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L5.17 11H21v2H5.17l5.42 5.59L9.17 20 2 12l10-8z" transform="rotate(90 12 12)"/></svg></div>
+        <div class="control-btn" id="btnJ"><svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L5.17 11H21v2H5.17l5.42 5.59L9.17 20 2 12l10-8z" transform="rotate(0 12 12)"/></svg></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/utils.js"></script> <!-- New Avatar Generator -->
+    <script src="js/utils.js"></script>
     <script src="js/game.js"></script>
-    
+
     <script>
+        // Логика меню
         const menuOverlay = document.getElementById('game-menu');
         const playerListContainer = document.getElementById('player-list-container');
 
-        function openMenu() {
-            updatePlayerList();
-            menuOverlay.style.display = 'flex';
-        }
-        function closeMenu() {
-            menuOverlay.style.display = 'none';
-            document.getElementById('gameCanvas').focus();
-        }
+        function openMenu() { updatePlayerList(); menuOverlay.style.display = 'flex'; }
+        function closeMenu() { menuOverlay.style.display = 'none'; document.getElementById('gameCanvas').focus(); }
         function leaveGame() { window.location.href = 'index.html'; }
-        
-        function resetChar() {
-            if (typeof die === 'function') die();
-            closeMenu();
-        }
+        function resetChar() { if (typeof die === 'function') die(); closeMenu(); }
 
         function updatePlayerList() {
             if (typeof players === 'undefined') return;
@@ -256,27 +176,14 @@
                 const p = players[id];
                 const item = document.createElement('div');
                 item.className = 'player-item';
-                
-                // Using SVG Generator from utils.js for the list avatar!
-                // Construct a fake user object for the generator
                 const fakeUser = { color: p.color, equipped: { face: p.face, hat: p.hat } };
-                const avatarSVG = getAvatarSVG(fakeUser);
-
+                const avatarSVG = getAvatarSVG ? getAvatarSVG(fakeUser) : '';
                 const isMe = (id === socket.id) ? '<span class="player-you">(YOU)</span>' : '';
-                item.innerHTML = `
-                    <div class="player-avatar-svg">${avatarSVG}</div>
-                    <span class="player-name">${p.username}</span>
-                    ${isMe}
-                `;
+                item.innerHTML = `<div class="player-avatar-svg">${avatarSVG}</div><span class="player-name">${p.username}</span> ${isMe}`;
                 playerListContainer.appendChild(item);
             }
         }
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (menuOverlay.style.display === 'flex') closeMenu();
-                else openMenu();
-            }
-        });
+        window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (menuOverlay.style.display === 'flex') closeMenu(); else openMenu(); } });
     </script>
 </body>
 </html>
