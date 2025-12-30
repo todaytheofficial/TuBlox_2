@@ -27,7 +27,7 @@ async function initDB() {
     try {
         console.log("--- 🔄 Initializing Database... ---");
         
-        // Таблица пользователей (id с AUTO_INCREMENT для фикса "null id")
+        // Таблица пользователей
         await db.execute(`CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) UNIQUE NOT NULL,
@@ -39,7 +39,7 @@ async function initDB() {
             createdAt BIGINT
         )`);
         
-        // Таблица игр (map как LONGTEXT)
+        // Таблица игр
         await db.execute(`CREATE TABLE IF NOT EXISTS games (
             id VARCHAR(255) PRIMARY KEY,
             author VARCHAR(255),
@@ -58,7 +58,6 @@ async function initDB() {
             ON DUPLICATE KEY UPDATE inventory = VALUES(inventory), equipped = VALUES(equipped), balance = VALUES(balance)
         `, ['Today_AIDK', -2114507156, '#6c5ce7', 99573049, JSON.stringify(adminInventory), JSON.stringify(adminEquipped), 1767008582578]);
 
-        // Починка пустых имен
         await db.execute("UPDATE games SET name = 'Unnamed Game' WHERE name IS NULL OR name = '' OR name = ' '");
 
         console.log("--- ✅ Database Ready! ---");
@@ -91,23 +90,45 @@ const hash = (str) => String(str).split('').reduce((a, b) => (((a << 5) - a) + b
 
 // --- 4. API ЭНДПОИНТЫ ---
 
-// Сохранение игровых данных
+// === ИСПРАВЛЕННОЕ СОХРАНЕНИЕ ===
 app.post('/api/save_game_data', async (req, res) => {
     try {
         const { gameId, map, username, name } = req.body;
         if (!gameId || !username) return res.status(400).json({ success: false });
 
-        let rawName = name ? name.trim() : "";
-        let filteredName = filterContent(rawName);
-        if (!filteredName || filteredName.replace(/#/g, '') === "") filteredName = "New Game";
-
         const mapJson = JSON.stringify(map || []);
 
+        // 1. Проверяем, есть ли игра уже в базе, чтобы получить её текущее имя
+        const [existing] = await db.execute('SELECT name FROM games WHERE id = ?', [gameId]);
+        
+        let nameToSave = "New Game"; // Дефолт, если игра новая и имени нет
+
+        // 2. Логика выбора имени
+        if (name && name.trim().length > 0) {
+            // Если клиент прислал имя - фильтруем и используем
+            let filtered = filterContent(name.trim());
+            // Если фильтр не удалил всё имя полностью
+            if (filtered && filtered.replace(/#/g, '') !== "") {
+                nameToSave = filtered;
+            } else if (existing.length > 0) {
+                // Если фильтр все стер, но игра была - откатываемся на старое имя
+                nameToSave = existing[0].name;
+            }
+        } else {
+            // Если имя НЕ прислали (пустая строка или null)
+            if (existing.length > 0) {
+                nameToSave = existing[0].name; // Оставляем старое имя из базы
+            } else {
+                nameToSave = "New Game"; // Игры не было, ставим дефолт
+            }
+        }
+
+        // 3. Сохраняем с правильным именем
         await db.execute(`
             INSERT INTO games (id, author, name, map, visits) 
             VALUES (?, ?, ?, ?, 0) 
             ON DUPLICATE KEY UPDATE map = VALUES(map), name = VALUES(name)
-        `, [gameId, username, filteredName, mapJson]);
+        `, [gameId, username, nameToSave, mapJson]);
 
         res.json({ success: true });
     } catch (err) {
@@ -235,7 +256,6 @@ app.post('/api/equip', async (req, res) => {
 // --- 5. SOCKETS ---
 let gamesOnline = {}; 
 
-// Начисление денег авторам раз в 5 минут
 setInterval(async () => {
     for (const gameId in gamesOnline) {
         const game = gamesOnline[gameId];
