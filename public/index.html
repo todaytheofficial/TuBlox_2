@@ -5,53 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TuBlox 2 - Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        /* Стили вкладок */
-        .nav-tabs { display: flex; gap: 20px; margin: 20px 5%; border-bottom: 2px solid #2d3436; padding-bottom: 10px; }
-        .tab-btn { background: none; border: none; color: var(--text-muted); font-size: 18px; font-weight: bold; cursor: pointer; font-family: var(--font-head); }
-        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); padding-bottom: 7px; }
-
-        .section { display: none; }
-        .section.active { display: block; }
-        
-        /* Стили для кнопок на карточке в "My Creations" */
-        .card-actions {
-            display: flex;
-            gap: 5px;
-            padding: 10px;
-            border-top: 1px solid #333;
-        }
-        .btn-card {
-            flex: 1;
-            padding: 6px;
-            font-size: 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            transition: 0.2s;
-        }
-        .btn-play-card { background: var(--primary); }
-        .btn-play-card:hover { background: #0062a3; }
-        .btn-edit-card { background: #2d3436; border: 1px solid #555; }
-        .btn-edit-card:hover { background: #444; border-color: white; }
-    </style>
 </head>
 <body>
     <header>
+        <!-- 1. Логотип -->
         <div class="logo">TuBlox</div>
+
+        <!-- 2. Поиск по центру -->
+        <div class="search-wrapper">
+            <input type="text" id="game-search" class="search-input" placeholder="Search games...">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+
+        <!-- 3. Правая часть (Профиль + Кнопки) -->
         <div class="header-right">
-            <!-- НОВАЯ КНОПКА СОЗДАНИЯ СВЕРХУ -->
-            <button onclick="startNewGame()" class="btn-primary" style="background: var(--success); margin-right: 15px;">
+            <button onclick="startNewGame()" class="btn-primary" style="background: var(--success); padding: 8px 16px; font-size: 14px;">
                 + Create
             </button>
-
+            
             <button onclick="location.href='shop.html'" class="btn-icon" title="Shop">
                 <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
             </button>
+            
             <div id="profile-area">
-                <a href="login.html" class="btn-primary" style="padding: 8px 16px; font-size: 14px; width: auto;">Log In</a>
+                <a href="login.html" class="btn-primary" style="width: auto;">Log In</a>
             </div>
         </div>
     </header>
@@ -62,34 +42,48 @@
     </nav>
 
     <main>
+        <!-- Вкладка DISCOVER -->
         <div id="discover" class="section active">
-            <h2 style="margin: 20px;">Popular Games</h2>
-            <div id="games-list" class="grid">Loading games...</div>
+            <div class="section-header">
+                <div style="display:flex; align-items:center;">
+                    <h2 id="discover-title">Popular Games</h2>
+                    <span id="search-status" class="search-status-text"></span>
+                </div>
+            </div>
+            <div id="games-list" class="grid">
+                <p style="color:#666; margin-left: 10px;">Loading...</p>
+            </div>
         </div>
 
+        <!-- Вкладка STUDIO -->
         <div id="studio" class="section">
-            <div style="margin: 20px 5%; display: flex; justify-content: space-between; align-items: center;">
+            <div class="section-header">
                 <h2>My Creations</h2>
-                <!-- Дублируем кнопку создания и здесь для удобства -->
                 <button onclick="startNewGame()" class="btn-primary" style="width: auto; font-size: 14px;">+ New Project</button>
             </div>
             
-            <div id="my-games-list" class="grid" style="margin-top: 10px;">
-                <p style="color: #888; margin-left: 20px;">You haven't published any games yet.</p>
+            <div id="my-games-list" class="grid">
+                <p style="color: #888;">You haven't published any games yet.</p>
             </div>
         </div>
     </main>
 
-    <!-- Модальное окно PLAY (только для Discover) -->
+    <!-- Модальное окно PLAY -->
     <div id="game-modal" class="modal-overlay">
         <div class="modal-box">
-            <h2 id="gm-name">Game Name</h2>
-            <p id="gm-author" style="color:var(--text-muted)">Author</p>
-            <div id="gm-stats" style="margin: 15px 0; font-size:14px; color:var(--accent);">Stats</div>
-            <p id="gm-desc" style="color:var(--text-main); font-size:14px; margin-bottom:20px;">Description...</p>
+            <button onclick="closeGameModal()" class="close-btn">×</button>
+            <h2 id="gm-name" style="color: var(--primary);">Game Name</h2>
+            <p id="gm-author" style="color:var(--text-muted); font-size: 18px;">Author</p>
+            
+            <div style="background: #20202a; padding: 15px; border-radius: 12px; margin: 20px 0; display:flex; justify-content: space-around;">
+                <span id="gm-online" style="color: var(--success); font-weight: bold;">Online: 0</span>
+                <span id="gm-visits" style="color: var(--accent); font-weight: bold;">Visits: 0</span>
+            </div>
+
+            <p id="gm-desc" style="color:#ccc; font-size:14px; margin-bottom:25px;">No description provided.</p>
+            
             <div class="modal-actions">
-                <button id="btn-play" class="btn-primary" style="flex:2;">▶ PLAY</button>
-                <button onclick="closeGameModal()" class="btn-shop" style="width:50px; margin:0;">×</button>
+                <button id="btn-play" class="btn-primary" style="width: 100%; font-size: 20px; padding: 15px;">▶ PLAY NOW</button>
             </div>
         </div>
     </div>
@@ -100,14 +94,15 @@
     <script>
         const socket = io();
         let user = null;
+        let allGamesCache = []; // Храним все игры локально для поиска
 
         async function init() {
             user = await getSession();
             if(user) {
                 const avatarSvg = getAvatarSVG(user);
                 document.getElementById('profile-area').innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div class="vubs-badge" onclick="location.href='shop.html'" style="cursor:pointer">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div class="vubs-badge" onclick="location.href='shop.html'">
                             <img src="assets/vubs.png" class="vubs-icon-img">
                             <span class="vubs-amount">${user.balance}</span>
                         </div>
@@ -117,18 +112,17 @@
                         </div>
                     </div>
                 `;
+                
+                if (user.is_admin) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-icon';
+                    btn.style.color = '#ff7675';
+                    btn.innerHTML = '⚙';
+                    btn.title = "Admin Panel";
+                    btn.onclick = () => location.href = 'admin.html';
+                    document.querySelector('.header-right').prepend(btn);
+                }
             }
-
-            // Внутри init() после получения user
-if (user.is_admin) {
-    // Создаем кнопку админки
-    const btn = document.createElement('button');
-    btn.className = 'btn-primary';
-    btn.style.background = '#6c5ce7';
-    btn.innerText = 'Admin Panel';
-    btn.onclick = () => location.href = 'admin.html';
-    document.querySelector('.header-right').prepend(btn);
-}
             socket.emit('request_games');
         }
 
@@ -139,78 +133,137 @@ if (user.is_admin) {
             event.currentTarget.classList.add('active');
         }
 
-        // --- НОВАЯ ФУНКЦИЯ СОЗДАНИЯ ---
         function startNewGame() {
             if(!user) return alert("Please log in to create games!");
-            // Генерируем временный ID. Игра не будет в базе, пока не нажмешь Publish в студии.
             const tempId = 'g_' + Math.random().toString(36).substr(2, 9);
             window.location.href = `studio.html?id=${tempId}`;
         }
 
-        socket.on('update_dashboard', games => {
-            const list = document.getElementById('games-list');
-            const myList = document.getElementById('my-games-list');
-            list.innerHTML = '';
+        // --- ЛОГИКА ПОИСКА ---
+        const searchInput = document.getElementById('game-search');
+        const searchStatus = document.getElementById('search-status');
+        const discoverTitle = document.getElementById('discover-title');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
             
-            // Фильтруем мои игры
-            const myGames = games.filter(g => user && g.author === user.username);
-            
-            if(myGames.length > 0) {
-                myList.innerHTML = ''; // Очищаем заглушку
+            // Если мы не на вкладке Discover, переключаем на неё
+            if(!document.getElementById('discover').classList.contains('active')) {
+                document.querySelector('.tab-btn[onclick*="discover"]').click();
+            }
+
+            if(query.length > 0) {
+                discoverTitle.style.display = 'none';
+                searchStatus.innerHTML = `🔎 Searching for: "<span style="color:white">${e.target.value}</span>"`;
+                
+                // Фильтрация (Похожие названия)
+                const filtered = allGamesCache.filter(g => 
+                    g.name.toLowerCase().includes(query) || 
+                    g.author.toLowerCase().includes(query)
+                );
+                
+                renderGames(filtered, true);
             } else {
-                myList.innerHTML = '<p style="color: #888; margin-left: 5%;">You haven\'t published any games yet.</p>';
+                // Сброс
+                discoverTitle.style.display = 'block';
+                searchStatus.innerHTML = '';
+                renderGames(allGamesCache, false);
+            }
+        });
+
+        // Получение игр от сервера
+        socket.on('update_dashboard', games => {
+            allGamesCache = games; // Сохраняем в кэш
+            // Если в поиске что-то есть, не сбиваем результаты, иначе рендерим всё
+            if(searchInput.value.trim() === "") {
+                renderGames(games, false);
+            }
+            renderMyGames(games);
+        });
+
+        function renderGames(games, isSearch) {
+            const list = document.getElementById('games-list');
+            list.innerHTML = '';
+
+            if(games.length === 0) {
+                list.innerHTML = isSearch 
+                    ? '<div style="grid-column:1/-1; text-align:center; color:#666; padding:20px;">No games found matching your query.</div>'
+                    : '<div style="grid-column:1/-1; text-align:center; color:#666;">No popular games yet.</div>';
+                return;
             }
 
             games.forEach(g => {
-                const cardHtml = `
-                    <div class="card-img-placeholder"></div>
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-img-placeholder">
+                        <span style="font-size:30px;">🎮</span>
+                    </div>
                     <div class="card-content">
                         <h4>${g.name}</h4>
                         <div class="card-meta">
-                            <span>Online: ${g.online || 0}</span>
-                            <span>Visits: ${g.visits || 0}</span>
+                            <span>🟢 ${g.online || 0} Playing</span>
+                            <span>👁️ ${g.visits || 0}</span>
                         </div>
                     </div>
                 `;
-
-                // 1. Вкладка DISCOVER (Для всех)
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = cardHtml;
                 card.onclick = () => openGameModal(g);
                 list.appendChild(card);
-
-                // 2. Вкладка STUDIO (Только мои)
-                if (user && g.author === user.username) {
-                    const myCard = document.createElement('div');
-                    myCard.className = 'card';
-                    // Добавляем кнопки действий
-                    myCard.innerHTML = `
-                        <div class="card-img-placeholder"></div>
-                        <div class="card-content">
-                            <h4>${g.name}</h4>
-                            <div class="card-actions">
-                                <button class="btn-card btn-play-card" onclick="event.stopPropagation(); location.href='game.html?id=${g.id}'">▶ PLAY</button>
-                                <button class="btn-card btn-edit-card" onclick="event.stopPropagation(); location.href='studio.html?id=${g.id}'">✎ EDIT</button>
-                            </div>
-                        </div>
-                    `;
-                    // Клик по самой карточке тоже ведет в студию
-                    myCard.onclick = () => location.href = `studio.html?id=${g.id}`;
-                    myList.appendChild(myCard);
-                }
             });
-        });
+        }
+
+        function renderMyGames(games) {
+            const myList = document.getElementById('my-games-list');
+            const myGames = games.filter(g => user && g.author === user.username);
+            
+            if(myGames.length === 0) {
+                myList.innerHTML = '<p style="color: #666; padding:10px;">You haven\'t published any games yet.</p>';
+                return;
+            }
+
+            myList.innerHTML = '';
+            myGames.forEach(g => {
+                const myCard = document.createElement('div');
+                myCard.className = 'card';
+                myCard.innerHTML = `
+                    <div class="card-img-placeholder" style="background: linear-gradient(135deg, #2d3436, #000);">
+                        <span style="font-size:30px;">🛠️</span>
+                    </div>
+                    <div class="card-content">
+                        <h4>${g.name}</h4>
+                        <div class="card-actions">
+                            <button class="btn-card btn-play-card" onclick="event.stopPropagation(); location.href='game.html?id=${g.id}'">▶ PLAY</button>
+                            <button class="btn-card btn-edit-card" onclick="event.stopPropagation(); location.href='studio.html?id=${g.id}'">✎ EDIT</button>
+                        </div>
+                    </div>
+                `;
+                myCard.onclick = () => location.href = `studio.html?id=${g.id}`;
+                myList.appendChild(myCard);
+            });
+        }
 
         function openGameModal(game) {
             document.getElementById('gm-name').textContent = game.name;
             document.getElementById('gm-author').textContent = "By " + game.author;
-            document.getElementById('gm-stats').innerHTML = `Online: ${game.online || 0} | Visits: ${game.visits || 0}`;
+            document.getElementById('gm-online').textContent = `Online: ${game.online || 0}`;
+            document.getElementById('gm-visits').textContent = `Visits: ${game.visits || 0}`;
             document.getElementById('btn-play').onclick = () => location.href = `game.html?id=${game.id}`;
-            document.getElementById('game-modal').style.display = 'flex';
+            
+            const modal = document.getElementById('game-modal');
+            modal.style.display = 'flex';
         }
 
-        function closeGameModal() { document.getElementById('game-modal').style.display = 'none'; }
+        function closeGameModal() { 
+            document.getElementById('game-modal').style.display = 'none'; 
+        }
+
+        // Закрытие модалки по клику вне окна
+        window.onclick = function(event) {
+            const modal = document.getElementById('game-modal');
+            if (event.target == modal) {
+                closeGameModal();
+            }
+        }
         
         init();
     </script>

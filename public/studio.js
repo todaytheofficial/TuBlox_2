@@ -1,5 +1,5 @@
 // ==========================================
-// GLOBAL VARIABLES
+// STUDIO.JS - CONVEYOR & COLLISION FIX
 // ==========================================
 let canvas, ctx;
 let modelPreviewCanvas, modelPreviewCtx;
@@ -10,9 +10,8 @@ let isPanning = false, isDragging = false;
 
 // SCALE VARIABLES
 let isResizing = false;
-let resizeHandle = null; 
+let resizeHandle = null;
 let resizeStart = { x: 0, y: 0, w: 0, h: 0, mx: 0, my: 0 };
-
 let startX, startY;
 let contextMenuObj = null;
 
@@ -23,20 +22,23 @@ const ICONS = {
     text: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>',
     trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
     edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
-    box: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>'
+    box: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
+    model: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffeaa7" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
+    spawner: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e67e22" stroke-width="2"><rect x="2" y="2" width="20" height="20"></rect><path d="M12 8v8M8 12h8"></path></svg>',
+    button: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2"><rect x="2" y="10" width="20" height="8" rx="2"></rect><rect x="6" y="6" width="12" height="4"></rect></svg>'
 };
 
 // MODELS LIBRARY
 let modelsLibrary = [
+    { id: 'tu_conveyor', category: 'Mechanisms', name: 'Conveyor', objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 20, color: '#34495e', anchored: true, collide: true, special: 'conveyor', conveyorSpeed: 5, text: '>>>', textSize: 12 }] },
+    { id: 'tu_spawner', category: 'Tycoon', name: 'TuModel Spawner', objects: [{ type: 'part', x: 0, y: 0, w: 40, h: 40, color: '#e67e22', anchored: true, collide: false, special: 'spawner', spawnTarget: '', spawnRate: 0, spawnAnchored: false, text: 'Spawner', textSize: 10 }] },
+    { id: 'tu_button', category: 'Tycoon', name: 'Button', objects: [{ type: 'part', x: 0, y: 0, w: 40, h: 15, color: '#e74c3c', anchored: true, collide: true, special: 'button', targetName: '', text: 'BTN', textSize: 10 }] },
     { id: 'kill_part', category: 'Blocks', name: 'Kill Part', objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 40, color: '#ff0000', anchored: true, collide: true, special: 'kill', transparency: 0 }] },
     { id: 'spinner_part', category: 'Mechanisms', name: 'Spinner (Kill)', objects: [{ type: 'part', x: 0, y: 0, w: 150, h: 20, color: '#e74c3c', anchored: true, collide: true, special: 'spinner', spinSpeed: 2, transparency: 0 }] },
     { id: 'moving_part', category: 'Mechanisms', name: 'Moving Platform', objects: [{ type: 'part', x: 0, y: 0, w: 100, h: 20, color: '#3498db', anchored: true, collide: true, special: 'mover', moveSpeed: 2, rangeX: 200, rangeY: 0, transparency: 0 }] },
     { id: 'teleport_set', category: 'Mechanisms', name: 'Teleporters', objects: [{ type: 'part', x: 0, y: 0, w: 80, h: 10, color: '#3498db', anchored: true, collide: false, special: 'teleport', target: 'tp_out', text: 'In', transparency: 0.2 }, { type: 'part', x: 150, y: 0, w: 80, h: 10, color: '#e74c3c', anchored: true, collide: false, special: 'teleport', target: 'tp_in', id: 'tp_out', text: 'Out', transparency: 0.2 }] },
     { id: 'speed_pad', category: 'Boosts', name: 'Speed Pad', objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#f1c40f', anchored: true, collide: false, special: 'speed_up', customSpeed: 16, text: 'Speed+', textSize: 14, textColor: '#000000', transparency: 0.2 }] },
     { id: 'jump_pad', category: 'Boosts', name: 'Jump Pad', objects: [{ type: 'part', x: 0, y: 0, w: 60, h: 10, color: '#2ecc71', anchored: true, collide: false, special: 'jump_boost', customJump: 30, text: 'Jump+', textSize: 14, textColor: '#000000', transparency: 0.2 }] },
-    { id: 'big_player', category: 'Boosts', name: 'Big Player', objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 80, color: '#9b59b6', anchored: true, collide: false, special: 'big_player', customScale: 2, text: 'BIG', textSize: 20, transparency: 0.3 }] },
-    { id: 'small_player', category: 'Boosts', name: 'Small Player', objects: [{ type: 'part', x: 0, y: 0, w: 50, h: 50, color: '#00cec9', anchored: true, collide: false, special: 'small_player', customScale: 0.5, text: 'Small', textSize: 15, transparency: 0.3 }] },
-    { id: 'reset_stats', category: 'Boosts', name: 'Reset Stats', objects: [{ type: 'part', x: 0, y: 0, w: 40, h: 80, color: '#bdc3c7', anchored: true, collide: false, special: 'normal_player', text: 'Reset', textSize: 12, transparency: 0.3 }] },
     { id: 'tool_flashlight', category: 'Items', name: 'Flashlight', objects: [{ type: 'part', x: 0, y: 0, w: 40, h: 15, color: '#2d3436', anchored: true, collide: false, special: 'flashlight', text: '🔦', textSize: 12 }] },
     { id: 'tool_sword', category: 'Items', name: 'Sword', objects: [{ type: 'part', x: 0, y: 0, w: 15, h: 45, color: '#bdc3c7', anchored: true, collide: false, special: 'sword', text: '⚔️', textSize: 20 }] }
 ];
@@ -45,56 +47,46 @@ let currentTool = 'part';
 let currentTab = 'build';
 let currentModel = null;
 let selectedModel = null;
-let currentGameName = ""; 
-
-let contextMenu, textBtn, modal, textInput, fontSelect, fontPreview;
-let publishModal, publishNameInput;
-let saveBtn, quickSaveBtn, modelsLibraryEl;
-let currentUser;
-let gameId;
+let currentGameName = "";
+let contextMenu, textBtn, modal, textInput, publishModal, publishNameInput, saveBtn, quickSaveBtn, modelsLibraryEl;
+let currentUser, gameId;
 
 // ==========================================
-// INITIALIZATION
+// INIT
 // ==========================================
 function initStudio() {
     canvas = document.getElementById('gameCanvas');
     if (!canvas) return;
     ctx = canvas.getContext('2d');
-
+    
     modelPreviewCanvas = document.getElementById('modelPreviewCanvas');
     if (modelPreviewCanvas) modelPreviewCtx = modelPreviewCanvas.getContext('2d');
 
     contextMenu = document.getElementById('context-menu');
-    textBtn = contextMenu?.querySelector('button:nth-child(2)');
+    
+    if (contextMenu && !document.getElementById('cm-add-child')) {
+        const btn = document.createElement('button');
+        btn.id = 'cm-add-child'; btn.className = 'context-btn';
+        btn.innerHTML = `${ICONS.part} Add Child Part`;
+        btn.onclick = addChildToModel;
+        contextMenu.appendChild(btn);
+    }
 
     modal = document.getElementById('text-modal-overlay');
     textInput = document.getElementById('modal-text-input');
-    fontSelect = document.getElementById('modal-font-select');
-    fontPreview = document.getElementById('font-preview-box');
-    
-    // Новые элементы для публикации
     publishModal = document.getElementById('publish-modal-overlay');
     publishNameInput = document.getElementById('publish-name-input');
-    
-    // Кнопки
-    saveBtn = document.getElementById('publish-btn'); // Кнопка Publish
-    quickSaveBtn = document.getElementById('quick-save-btn'); // Кнопка Quick Save
+    saveBtn = document.getElementById('publish-btn');
+    quickSaveBtn = document.getElementById('quick-save-btn');
     modelsLibraryEl = document.getElementById('models-library');
 
     const urlParams = new URLSearchParams(window.location.search);
     gameId = urlParams.get('id') || 'game1';
-
     const storedUser = localStorage.getItem('tublox_user');
     currentUser = storedUser ? JSON.parse(storedUser) : { username: "Guest" };
+    if (quickSaveBtn) quickSaveBtn.onclick = saveProject;
 
-    if (quickSaveBtn) quickSaveBtn.onclick = saveProject; // Quick save
-
-    resize();
-    loadProject();
-    switchTab('build');
-
-    setupEventListeners();
-    renderModelLibrary();
+    resize(); loadProject(); switchTab('build'); setupEventListeners(); renderModelLibrary();
 }
 
 function setupEventListeners() {
@@ -106,640 +98,412 @@ function setupEventListeners() {
     }
     window.onmousemove = handleMouseMove;
     window.onmouseup = handleMouseUp;
-    window.addEventListener('click', () => {
-        if (contextMenu) contextMenu.style.display = 'none';
-        contextMenuObj = null;
-    });
+    window.addEventListener('click', () => { if (contextMenu) contextMenu.style.display = 'none'; contextMenuObj = null; });
 }
 
 function resize() {
     if (!canvas) return;
     const ws = document.querySelector('.workspace');
     const sb = document.querySelector('.sidebar');
-    if (ws && sb) {
-        canvas.width = ws.clientWidth - (window.innerWidth > 768 ? sb.offsetWidth : 0);
-        canvas.height = ws.clientHeight;
-    }
+    if (ws && sb) { canvas.width = ws.clientWidth - (window.innerWidth > 768 ? sb.offsetWidth : 0); canvas.height = ws.clientHeight; }
     render();
     if (currentTab === 'models') renderModelPreview();
 }
 
 // ==========================================
-// PROJECT LOADING/SAVING
+// DATA
 // ==========================================
 async function loadProject() {
     try {
         const res = await fetch(`/api/load_studio/${gameId}`);
-        if (!res.ok) throw new Error('Network response was not ok');
+        if (!res.ok) throw new Error('Network');
         const data = await res.json();
-        
         studioObjects = data.map || [];
         currentGameName = data.name || "Unnamed Game";
-        
-        studioObjects.forEach(obj => {
-            if (obj.anchored === undefined) obj.anchored = true;
-            if (obj.collide === undefined) obj.collide = true;
-            if (obj.transparency === undefined) obj.transparency = 0;
-            if (obj.special === 'mover' && !obj.moveSpeed) obj.moveSpeed = 2; 
-        });
-        
-        render();
-        updateExplorer();
-    } catch (e) {
-        studioObjects = [];
-        render();
-        updateExplorer();
-    }
+        render(); updateExplorer();
+    } catch (e) { studioObjects = []; render(); updateExplorer(); }
 }
 
-// --- QUICK SAVE ---
 async function saveProject() {
-    const originalIcon = quickSaveBtn.innerHTML;
-    quickSaveBtn.innerHTML = "⌛";
-    
+    const originalIcon = quickSaveBtn.innerHTML; quickSaveBtn.innerHTML = "⌛";
     try {
-        const res = await fetch('/api/save_game_data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                username: currentUser.username,
-                name: currentGameName, // Сохраняем с текущим именем
-                map: studioObjects
-            })
-        });
-        if (res.ok) {
-             // Визуальный фидбек
-             quickSaveBtn.innerHTML = "✔";
-             setTimeout(() => quickSaveBtn.innerHTML = originalIcon, 1000);
-        } else alert('❌ Save failed');
-    } catch (error) {
-        alert('❌ Error saving game');
-        quickSaveBtn.innerHTML = originalIcon;
-    }
+        await fetch('/api/save_game_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId, username: currentUser.username, name: currentGameName, map: studioObjects }) });
+        quickSaveBtn.innerHTML = "✔"; setTimeout(() => quickSaveBtn.innerHTML = originalIcon, 1000);
+    } catch (error) { quickSaveBtn.innerHTML = originalIcon; }
 }
 
-// --- PUBLISH FUNCTIONS ---
-function openPublishModal() {
-    if(publishModal) {
-        publishModal.style.display = 'flex';
-        publishNameInput.value = currentGameName;
-    }
-}
-
-function closePublishModal() {
-    if(publishModal) publishModal.style.display = 'none';
-}
-
+function openPublishModal() { if(publishModal) { publishModal.style.display = 'flex'; publishNameInput.value = currentGameName; } }
+function closePublishModal() { if(publishModal) publishModal.style.display = 'none'; }
 async function publishGame() {
     const newName = publishNameInput.value;
-    if(!newName.trim()) return alert("Enter game name!");
-
-    const btn = document.querySelector('#publish-modal-overlay .btn-modal-action');
-    const oldText = btn.textContent;
-    btn.textContent = "Publishing...";
-
+    if(!newName.trim()) return alert("Enter name!");
     try {
-        const res = await fetch('/api/save_game_data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                username: currentUser.username,
-                name: newName,
-                map: studioObjects
-            })
-        });
-        
-        if (res.ok) {
-            currentGameName = newName;
-            closePublishModal();
-            alert(`✅ Game "${newName}" Published Successfully!`);
-            
-            // После успешной публикации можно обновить UI, если нужно
-            // Например, поменять заголовок страницы
-        } else {
-            alert('❌ Publish failed');
-        }
-    } catch (error) {
-        alert('❌ Error publishing game');
-    }
-    btn.textContent = oldText;
+        await fetch('/api/save_game_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gameId, username: currentUser.username, name: newName, map: studioObjects }) });
+        currentGameName = newName; closePublishModal(); alert(`Published: ${newName}`);
+    } catch (error) { alert('Error'); }
 }
 
 // ==========================================
-// TABS & TOOLS
+// UI & TOOLS
 // ==========================================
 function switchTab(tab) {
     currentTab = tab;
     document.querySelectorAll('.models-tab-content').forEach(t => t.classList.remove('active'));
-    const tabElement = document.getElementById(tab + '-tab');
-    if (tabElement) tabElement.classList.add('active');
-
-    if (tab === 'build') render();
-    else if (tab === 'models') { resize(); renderModelPreview(); }
+    document.getElementById(tab + '-tab')?.classList.add('active');
+    if (tab === 'build') render(); else if (tab === 'models') { resize(); renderModelPreview(); }
 }
-
 function setBuildTool(tool) {
     currentTool = tool;
     document.querySelectorAll('.model-tool').forEach(btn => btn.classList.remove('active'));
-    let targetBtn = event ? event.target : null;
-    while(targetBtn && !targetBtn.classList.contains('model-tool')) targetBtn = targetBtn.parentElement;
-    if (targetBtn) targetBtn.classList.add('active');
+    let target = event ? event.target.closest('.model-tool') : null;
+    if (target) target.classList.add('active');
     render();
 }
 
-function getScaleHandles(obj) {
-    if (!obj) return null;
-    const s = 10; 
-    const hw = s / 2;
-    return {
-        nw: { x: obj.x - hw, y: obj.y - hw, w: s, h: s, cursor: 'nwse-resize' },
-        n:  { x: obj.x + obj.w/2 - hw, y: obj.y - hw, w: s, h: s, cursor: 'ns-resize' },
-        ne: { x: obj.x + obj.w - hw, y: obj.y - hw, w: s, h: s, cursor: 'nesw-resize' },
-        w:  { x: obj.x - hw, y: obj.y + obj.h/2 - hw, w: s, h: s, cursor: 'ew-resize' },
-        e:  { x: obj.x + obj.w - hw, y: obj.y + obj.h/2 - hw, w: s, h: s, cursor: 'ew-resize' },
-        sw: { x: obj.x - hw, y: obj.y + obj.h - hw, w: s, h: s, cursor: 'nesw-resize' },
-        s:  { x: obj.x + obj.w/2 - hw, y: obj.y + obj.h - hw, w: s, h: s, cursor: 'ns-resize' },
-        se: { x: obj.x + obj.w - hw, y: obj.y + obj.h - hw, w: s, h: s, cursor: 'nwse-resize' }
-    };
-}
-
 // ==========================================
-// OBJECT MANIPULATION & UI
+// OBJECTS
 // ==========================================
 function addPart(model) {
     if (model) {
         model.objects.forEach(objTemplate => {
-            const p = { ...objTemplate, id: Date.now() + Math.random(), x: -camX + 100, y: -camY + 100 };
-            studioObjects.push(p);
-            selectedObj = p;
+            const p = JSON.parse(JSON.stringify(objTemplate));
+            p.id = Date.now() + Math.random();
+            p.x = -camX + 100 + (p.x||0); p.y = -camY + 100 + (p.y||0);
+            studioObjects.push(p); selectedObj = p;
         });
     } else {
-        const p = { id: Date.now(), type: 'part', x: -camX + 100, y: -camY + 100, w: 100, h: 40, color: '#95a5a6', anchored: true, collide: true, transparency: 0, scaleX: 1, scaleY: 1 };
-        studioObjects.push(p);
-        selectedObj = p;
+        const p = { id: Date.now(), type: 'part', x: -camX + 100, y: -camY + 100, w: 100, h: 40, color: '#95a5a6', anchored: true, collide: true };
+        studioObjects.push(p); selectedObj = p;
     }
     render(); updateExplorer(); showProperties();
 }
-
-function addSpawn() {
-    const p = { id: Date.now(), type: 'spawn', x: -camX + 150, y: -camY + 100, w: 40, h: 60, color: '#00b894', anchored: true, collide: false, transparency: 0 };
-    studioObjects.push(p);
-    selectedObj = p;
+function addModel() {
+    const p = { id: Date.now(), type: 'model', name: 'Model', x: -camX + 100, y: -camY + 100, w: 100, h: 100, children: [], anchored: true, collide: true };
+    studioObjects.push(p); selectedObj = p;
     render(); updateExplorer(); showProperties();
 }
-
-function addText() {
-    const p = { id: Date.now(), type: 'text', x: -camX + 100, y: -camY + 150, w: 120, h: 40, color: '#3498db', text: 'Text', textColor: '#fff', textSize: 20, anchored: true, collide: false };
-    studioObjects.push(p);
-    selectedObj = p;
-    render(); updateExplorer(); showProperties();
+function addChildToModel() {
+    if (!contextMenuObj || contextMenuObj.type !== 'model') return;
+    const child = { id: Date.now(), type: 'part', x: 10, y: 10, w: 50, h: 50, color: '#3498db', anchored: true, collide: true };
+    if(!contextMenuObj.children) contextMenuObj.children = [];
+    contextMenuObj.children.push(child);
+    if(contextMenu) contextMenu.style.display = 'none';
+    render(); updateExplorer();
 }
-
 function deleteObj() {
-    const target = contextMenuObj || selectedObj;
-    if (!target) return;
-    studioObjects = studioObjects.filter(o => o !== target);
-    selectedObj = null;
-    if (contextMenu) contextMenu.style.display = 'none';
-    contextMenuObj = null;
+    const target = contextMenuObj || selectedObj; if (!target) return;
+    const removeRecursive = (list) => {
+        const idx = list.indexOf(target);
+        if (idx > -1) { list.splice(idx, 1); return true; }
+        for (let item of list) { if (item.children && removeRecursive(item.children)) return true; }
+        return false;
+    };
+    removeRecursive(studioObjects); selectedObj = null; contextMenuObj = null; if (contextMenu) contextMenu.style.display = 'none';
     render(); updateExplorer(); showProperties();
 }
 
-function duplicateObj() {
-    const target = contextMenuObj || selectedObj;
-    if (!target) return;
-    const dup = {...target, id: Date.now(), x: target.x + 20, y: target.y + 20};
-    studioObjects.push(dup);
-    selectedObj = dup;
-    if (contextMenu) contextMenu.style.display = 'none';
-    contextMenuObj = null;
-    render(); updateExplorer(); showProperties();
-}
-
+// ==========================================
+// PROPERTIES
+// ==========================================
 function showProperties() {
     const p = document.getElementById('properties-panel');
     if (!p) return;
-    if (!selectedObj) {
-        p.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px;">Select an object</p>';
-        return;
-    }
+    if (!selectedObj) { p.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px;">Select object</p>'; return; }
 
-    let html = `
-    <label>Type: ${selectedObj.type.toUpperCase()}</label>
-    <label>Color</label>
-    <input type="color" value="${selectedObj.color || '#ffffff'}" oninput="updateObjectProperty('color', this.value)">
+    let html = `<label>Type: ${selectedObj.type.toUpperCase()}</label>`;
+    html += `<label>Name (ID)</label><input type="text" value="${selectedObj.name || ''}" placeholder="object_name" oninput="updateObjectProperty('name', this.value)">`;
+
+    if (selectedObj.type !== 'model') html += `<label>Color</label><input type="color" value="${selectedObj.color || '#ffffff'}" oninput="updateObjectProperty('color', this.value)">`;
+
+    html += `<label>Size (W x H)</label><div style="display:flex; gap:5px"><input type="number" value="${selectedObj.w}" onchange="updateObjectProperty('w', this.value)"><input type="number" value="${selectedObj.h}" onchange="updateObjectProperty('h', this.value)"></div>`;
+    html += `<label>Pos (X, Y)</label><div style="display:flex; gap:5px"><input type="number" value="${selectedObj.x}" onchange="updateObjectProperty('x', this.value)"><input type="number" value="${selectedObj.y}" onchange="updateObjectProperty('y', this.value)"></div>`;
+
+    // ANCHOR & COLLIDE (Available for ALL, including Models)
+    html += `<div class="prop-toggle-row"><label style="margin:0">Anchored</label><input type="checkbox" ${selectedObj.anchored ? 'checked' : ''} onchange="updateObjectProperty('anchored', this.checked)"></div>`;
+    html += `<div class="prop-toggle-row"><label style="margin:0">Can Collide</label><input type="checkbox" ${selectedObj.collide ? 'checked' : ''} onchange="updateObjectProperty('collide', this.checked)"></div>`;
     
-    <label>Size (W x H)</label>
-    <div style="display:flex; gap:5px">
-        <input type="number" value="${selectedObj.w}" onchange="updateObjectProperty('w', this.value)">
-        <input type="number" value="${selectedObj.h}" onchange="updateObjectProperty('h', this.value)">
-    </div>
+    if (selectedObj.type !== 'model') {
+        html += `<label>Transparency</label><input type="range" min="0" max="1" step="0.1" value="${selectedObj.transparency || 0}" oninput="updateObjectProperty('transparency', this.value)">`;
+    }
+
+    // SPECIALS
+    if (selectedObj.special === 'speed_up') html += `<hr><label style="color:#f1c40f">Speed</label><input type="number" value="${selectedObj.customSpeed || 16}" onchange="updateObjectProperty('customSpeed', this.value)">`;
+    if (selectedObj.special === 'jump_boost') html += `<hr><label style="color:#2ecc71">Jump</label><input type="number" value="${selectedObj.customJump || 30}" onchange="updateObjectProperty('customJump', this.value)">`;
     
-    <label>Position (X, Y)</label>
-    <div style="display:flex; gap:5px">
-        <input type="number" value="${selectedObj.x}" onchange="updateObjectProperty('x', this.value)">
-        <input type="number" value="${selectedObj.y}" onchange="updateObjectProperty('y', this.value)">
-    </div>
-
-    <label>Transparency</label>
-    <input type="range" min="0" max="1" step="0.1" value="${selectedObj.transparency || 0}" oninput="updateObjectProperty('transparency', this.value)">
-
-    <div class="prop-toggle-row">
-        <label for="p-anchored" style="margin:0">Anchored</label>
-        <input type="checkbox" id="p-anchored" class="toggle-switch" ${selectedObj.anchored ? 'checked' : ''} onchange="updateObjectProperty('anchored', this.checked)">
-    </div>
-    <div class="prop-toggle-row">
-        <label for="p-collide" style="margin:0">Can Collide</label>
-        <input type="checkbox" id="p-collide" class="toggle-switch" ${selectedObj.collide ? 'checked' : ''} onchange="updateObjectProperty('collide', this.checked)">
-    </div>
-    `;
-
-    if (selectedObj.special === 'spinner') {
-        html += `<hr style="border-color:#333; margin:10px 0;"><label style="color:#e74c3c">Rotation Speed</label><input type="number" value="${selectedObj.spinSpeed || 2}" onchange="updateObjectProperty('spinSpeed', this.value)">`;
+    // CONVEYOR SETTINGS
+    if (selectedObj.special === 'conveyor') {
+        html += `<hr><label style="color:#34495e">Conveyor Speed</label><input type="number" value="${selectedObj.conveyorSpeed || 5}" onchange="updateObjectProperty('conveyorSpeed', this.value)">`;
+        html += `<small style="color:#888">Positive = Right, Negative = Left</small>`;
     }
-    if (selectedObj.special === 'mover') {
-        html += `<hr style="border-color:#333; margin:10px 0;"><label style="color:#3498db">Move Speed</label><input type="number" step="0.1" value="${selectedObj.moveSpeed || 2}" onchange="updateObjectProperty('moveSpeed', this.value)"><label>Range X</label><input type="number" value="${selectedObj.rangeX || 0}" onchange="updateObjectProperty('rangeX', this.value)"><label>Range Y</label><input type="number" value="${selectedObj.rangeY || 0}" onchange="updateObjectProperty('rangeY', this.value)">`;
+
+    if (selectedObj.special === 'spawner') {
+        html += `<hr style="border-color:#e67e22"><label style="color:#e67e22">Spawner</label>`;
+        html += `<label>Spawn Target Name</label><input type="text" value="${selectedObj.spawnTarget || ''}" oninput="updateObjectProperty('spawnTarget', this.value)">`;
+        html += `<label>Spawn Rate (ms)</label><input type="number" value="${selectedObj.spawnRate || 0}" onchange="updateObjectProperty('spawnRate', this.value)">`;
+        html += `<div class="prop-toggle-row"><label>Spawn Anchored?</label><input type="checkbox" ${selectedObj.spawnAnchored ? 'checked' : ''} onchange="updateObjectProperty('spawnAnchored', this.checked)"></div>`;
     }
-    if (selectedObj.type === 'text' || selectedObj.text) {
-        html += `<hr style="border-color:#333; margin:10px 0;"><label>Text Content</label><input type="text" value="${selectedObj.text || ''}" oninput="updateObjectProperty('text', this.value)"><label>Text Color</label><input type="color" value="${selectedObj.textColor || '#ffffff'}" oninput="updateObjectProperty('textColor', this.value)"><label>Text Size</label><input type="range" min="10" max="100" value="${selectedObj.textSize || 20}" oninput="updateObjectProperty('textSize', this.value)"><button class="btn-studio" onclick="openTextEditor()" style="margin-top:10px; width:100%; background:#444; color:white; padding:5px; border-radius:3px; border:none;">${ICONS.edit} Edit Font</button>`;
+    if (selectedObj.special === 'button') {
+        html += `<hr style="border-color:#e74c3c"><label style="color:#e74c3c">Button</label>`;
+        html += `<label>Target Name</label><input type="text" value="${selectedObj.targetName || ''}" oninput="updateObjectProperty('targetName', this.value)">`;
     }
-    html += `<hr style="border-color:#333; margin:15px 0;"><button class="btn-studio" onclick="deleteObj()" style="background:var(--studio-danger); border:none; color:white; width:100%; padding:8px; border-radius:3px;">${ICONS.trash} Delete Object</button>`;
+    if (selectedObj.text || selectedObj.type === 'text') {
+        html += `<hr><label>Text</label><input type="text" value="${selectedObj.text || ''}" oninput="updateObjectProperty('text', this.value)"><label>Size</label><input type="number" value="${selectedObj.textSize || 20}" onchange="updateObjectProperty('textSize', this.value)">`;
+    }
+
+    html += `<hr style="margin:15px 0;"><button class="btn-studio" onclick="deleteObj()" style="background:var(--studio-danger); width:100%;">${ICONS.trash} Delete</button>`;
     p.innerHTML = html;
 }
 
 function updateObjectProperty(prop, val) {
     if (!selectedObj) return;
-    if (['w','h','x','y','textSize','transparency','scaleX','scaleY', 'customSpeed', 'customJump', 'customScale', 'spinSpeed', 'moveSpeed', 'rangeX', 'rangeY'].includes(prop)) selectedObj[prop] = Number(val);
-    else if (['anchored','collide'].includes(prop)) selectedObj[prop] = Boolean(val);
-    else selectedObj[prop] = val;
+    const updateRecursive = (obj, key, value) => {
+        obj[key] = value;
+        if (obj.children) obj.children.forEach(c => updateRecursive(c, key, value));
+    };
+
+    let processedVal = val;
+    if (['w','h','x','y','customSpeed','customJump','textSize','spawnRate','conveyorSpeed'].includes(prop)) processedVal = Number(val);
+    if (['anchored','collide','spawnAnchored'].includes(prop)) processedVal = Boolean(val);
+
+    // Apply recursively for Anchored AND Collide on Models
+    if (selectedObj.type === 'model' && (prop === 'anchored' || prop === 'collide')) {
+        updateRecursive(selectedObj, prop, processedVal);
+    } else {
+        selectedObj[prop] = processedVal;
+    }
     render();
 }
 
 function updateExplorer() {
-    const list = document.getElementById('explorer-list');
-    if (!list) return;
-    list.innerHTML = '';
-    if (studioObjects.length === 0) return list.innerHTML = '<p style="color:#666; text-align:center; margin-top:20px; font-size:0.8rem;">Empty map</p>';
-
-    [...studioObjects].reverse().forEach(obj => {
-        const div = document.createElement('div');
-        div.className = `obj-item ${selectedObj === obj ? 'selected' : ''}`;
-        let icon = ICONS.part;
-        if (obj.type === 'spawn') icon = ICONS.spawn;
-        if (obj.type === 'text') icon = ICONS.text;
-        div.innerHTML = `${icon} <span>${obj.special || obj.type} <span style="opacity:0.5">#${obj.id.toString().slice(-3)}</span></span>`;
-        div.onclick = () => { selectedObj = obj; showProperties(); render(); updateExplorer(); };
+    const list = document.getElementById('explorer-list'); if (!list) return; list.innerHTML = '';
+    const renderItem = (obj, depth=0) => {
+        const div = document.createElement('div'); div.className = `obj-item ${selectedObj === obj ? 'selected' : ''}`;
+        div.style.paddingLeft = (10 + depth * 15) + 'px';
+        div.innerHTML = `${obj.type === 'model' ? ICONS.model : ICONS.part} <span>${obj.name || obj.special || obj.type}</span>`;
+        div.onclick = (e) => { e.stopPropagation(); selectedObj = obj; showProperties(); render(); updateExplorer(); };
         list.appendChild(div);
-    });
+        if (obj.children) obj.children.forEach(c => renderItem(c, depth + 1));
+    };
+    studioObjects.slice().reverse().forEach(o => renderItem(o));
 }
 
 // ==========================================
-// RENDER LOOP (FIXED)
+// RENDER
 // ==========================================
 function render() {
     if (!ctx || !canvas) return;
-
-    // Clear
-    ctx.fillStyle = '#1e1e1e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.save();
-    // 1. Применяем ГЛОБАЛЬНЫЙ сдвиг камеры
-    ctx.translate(camX, camY);
+    ctx.fillStyle = '#1e1e1e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.save(); ctx.translate(camX, camY);
 
     // Grid
-    ctx.strokeStyle = '#2a2a2a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = -2000; i < 3000; i += 50) {
-        ctx.moveTo(i, -2000); ctx.lineTo(i, 3000);
-        ctx.moveTo(-2000, i); ctx.lineTo(3000, i);
-    }
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = -2000; i < 3000; i += 50) { ctx.moveTo(i, -2000); ctx.lineTo(i, 3000); ctx.moveTo(-2000, i); ctx.lineTo(3000, i); }
     ctx.stroke();
 
-    // Objects
-    studioObjects.forEach(obj => {
-        // Каждый объект рисуем в своем блоке save/restore
-        // Но при этом мы уже находимся внутри глобального translate(camX, camY)
+    const drawObject = (obj, parentX = 0, parentY = 0) => {
+        const absX = obj.x + parentX;
+        const absY = obj.y + parentY;
         ctx.save();
-
-        ctx.globalAlpha = 1 - (obj.transparency || 0);
-        if (obj.collide === false) ctx.globalAlpha *= 0.6;
-        ctx.fillStyle = obj.color;
-
-        // Рисуем тело объекта
-        if (obj.special === 'spinner') {
-            // Для спиннера вращаем систему координат вокруг его центра
-            ctx.translate(obj.x + obj.w/2, obj.y + obj.h/2);
-            ctx.rotate(Date.now() / 1000); 
-            ctx.fillRect(-obj.w/2, -obj.h/2, obj.w, obj.h);
-            // ПРИМЕЧАНИЕ: Мы не делаем restore тут же, так как контекст изолирован ctx.save() в начале цикла
+        
+        if (obj.type === 'model') {
+            if (selectedObj === obj) {
+                ctx.strokeStyle = '#ffeaa7'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+                ctx.strokeRect(absX, absY, obj.w, obj.h); ctx.setLineDash([]);
+            }
         } else {
-            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-        }
-        
-        // Восстанавливаем контекст, чтобы убрать вращение спиннера и альфу
-        // Теперь мы снова просто в координатах камеры
-        ctx.restore(); 
-
-        // --- ТЕПЕРЬ РИСУЕМ ОБВОДКИ И ТЕКСТ (ОНИ НЕ ДОЛЖНЫ ВРАЩАТЬСЯ) ---
-        
-        // Mover Path
-        if (obj.special === 'mover') {
-            ctx.strokeStyle = '#3498db';
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(obj.x + obj.w/2, obj.y + obj.h/2);
-            ctx.lineTo(obj.x + obj.w/2 + (obj.rangeX||0), obj.y + obj.h/2 + (obj.rangeY||0));
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
-
-            // Ghost
-            ctx.save();
-            ctx.globalAlpha = 0.2;
+            ctx.globalAlpha = 1 - (obj.transparency || 0);
+            if (!obj.collide) ctx.globalAlpha *= 0.6;
             ctx.fillStyle = obj.color;
-            ctx.fillRect(obj.x + (obj.rangeX||0), obj.y + (obj.rangeY||0), obj.w, obj.h);
-            ctx.restore();
-        }
+            ctx.fillRect(absX, absY, obj.w, obj.h);
 
-        // Unanchored Outline
-        if (obj.anchored === false) {
-            ctx.strokeStyle = '#ff7675';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(obj.x+2, obj.y+2, obj.w-4, obj.h-4);
+            if (obj.text) {
+                ctx.fillStyle = obj.textColor || 'white'; ctx.font = `bold ${obj.textSize || 14}px Arial`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(obj.text, absX + obj.w/2, absY + obj.h/2);
+            }
+            if (selectedObj === obj) { ctx.strokeStyle = '#00cec9'; ctx.lineWidth = 2; ctx.strokeRect(absX, absY, obj.w, obj.h); }
+            if (!obj.anchored) { ctx.strokeStyle = '#ff7675'; ctx.lineWidth = 1; ctx.strokeRect(absX+2, absY+2, obj.w-4, obj.h-4); }
         }
-        
-        // Text
-        if (obj.text && obj.special !== 'spinner') {
-            ctx.fillStyle = obj.textColor || 'white';
-            ctx.font = `bold ${obj.textSize || 20}px "${obj.font || 'Arial'}"`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(obj.text, obj.x + obj.w/2, obj.y + obj.h/2);
-        }
-        
-        // Selection Outline
-        if (selectedObj === obj) {
-            ctx.strokeStyle = '#00cec9';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-        }
-    });
+        ctx.restore();
+        if (obj.children) obj.children.forEach(child => drawObject(child, absX, absY));
+    };
 
-    // Scale Handles (Draw last, on top of everything)
+    studioObjects.forEach(obj => drawObject(obj));
+
     if (currentTool === 'scale' && selectedObj) {
         const handles = getScaleHandles(selectedObj);
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
-        
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#000000'; ctx.lineWidth = 1;
         for (let key in handles) {
             const h = handles[key];
-            ctx.beginPath();
-            ctx.arc(h.x + h.w/2, h.y + h.h/2, h.w/2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(h.x + h.w/2, h.y + h.h/2, h.w/2, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
         }
     }
-
-    ctx.restore(); // End Global Camera Translation
+    ctx.restore();
 }
 
 // ==========================================
-// INTERACTION (Mouse, Context)
+// MOUSE INTERACTION
 // ==========================================
 function handleContextMenu(e) {
     e.preventDefault();
     const mx = e.offsetX - camX;
     const my = e.offsetY - camY;
-    const hit = studioObjects.slice().reverse().find(o => mx > o.x && mx < o.x + o.w && my > o.y && my < o.y + o.h);
-    if (hit) {
-        contextMenuObj = hit;
-        selectedObj = hit;
-        if (textBtn) textBtn.innerHTML = (hit.text && hit.text.length > 0) ? `${ICONS.edit} Edit Text` : `${ICONS.edit} Add Text`;
-        if (contextMenu) {
-            contextMenu.style.display = 'flex';
-            contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
-            contextMenu.style.top = e.clientY + 'px';
+    const findHit = (list, px=0, py=0) => {
+        for (let i = list.length - 1; i >= 0; i--) {
+            const o = list[i];
+            const ax = o.x + px, ay = o.y + py;
+            if (o.type === 'model' && o.children) {
+                if (findHit(o.children, ax, ay)) return o;
+                if (mx > ax && mx < ax+o.w && my > ay && my < ay+o.h) return o;
+            } else { if (mx > ax && mx < ax+o.w && my > ay && my < ay+o.h) return o; }
         }
+        return null;
+    };
+    const hit = findHit(studioObjects);
+    if (hit) {
+        contextMenuObj = hit; selectedObj = hit;
+        const addBtn = document.getElementById('cm-add-child');
+        if (addBtn) addBtn.style.display = hit.type === 'model' ? 'block' : 'none';
+        if (contextMenu) { contextMenu.style.display = 'flex'; contextMenu.style.left = e.clientX + 'px'; contextMenu.style.top = e.clientY + 'px'; }
         showProperties();
-        render();
-    } else {
-        if (contextMenu) contextMenu.style.display = 'none';
-        contextMenuObj = null;
-    }
+    } else { if (contextMenu) contextMenu.style.display = 'none'; }
 }
 
 function handleMouseDown(e) {
-    if (e.button === 0) {
-        if (contextMenu) contextMenu.style.display = 'none';
-        contextMenuObj = null;
-    }
-    if (e.button === 2) {
-        isPanning = true;
-        // Важно: запоминаем не абсолютные координаты, а смещение для mousemove
-        return;
-    }
-
-    const mx = e.offsetX - camX;
-    const my = e.offsetY - camY;
+    if (e.button === 0 && contextMenu) contextMenu.style.display = 'none';
+    if (e.button === 2) { isPanning = true; return; }
+    const mx = e.offsetX - camX; const my = e.offsetY - camY;
 
     if (currentTool === 'scale' && selectedObj) {
         const handles = getScaleHandles(selectedObj);
         for (let key in handles) {
             const h = handles[key];
-            if (mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h) {
-                isResizing = true;
-                resizeHandle = key;
-                resizeStart = { x: selectedObj.x, y: selectedObj.y, w: selectedObj.w, h: selectedObj.h, mx: mx, my: my };
-                return; 
+            if (mx >= h.x && mx <= h.x+h.w && my >= h.y && my <= h.y+h.h) {
+                isResizing = true; resizeHandle = key;
+                resizeStart = { x: selectedObj.x, y: selectedObj.y, w: selectedObj.w, h: selectedObj.h, mx, my };
+                return;
             }
         }
     }
 
-    const hit = studioObjects.slice().reverse().find(o => mx > o.x && mx < o.x + o.w && my > o.y && my < o.y + o.h);
-    if (hit) {
-        selectedObj = hit;
-        isDragging = true;
-        startX = mx - hit.x;
-        startY = my - hit.y;
-        showProperties();
-        updateExplorer();
-        render();
-    } else {
-        if (['part','spawn','text'].includes(currentTool)) {
-            const gx = Math.round(mx/10)*10;
-            const gy = Math.round(my/10)*10;
-            let newObj;
-            if (currentTool === 'part') newObj = { id: Date.now(), type: 'part', x: gx, y: gy, w: 100, h: 40, color: '#95a5a6', anchored: true, collide: true, transparency: 0 };
-            else if (currentTool === 'spawn') newObj = { id: Date.now(), type: 'spawn', x: gx, y: gy, w: 40, h: 60, color: '#00b894', anchored: true, collide: false, transparency: 0 };
-            else if (currentTool === 'text') newObj = { id: Date.now(), type: 'text', x: gx, y: gy, w: 120, h: 40, color: '#3498db', text: 'Text', textColor: '#fff', textSize: 20, anchored: true, collide: false };
-            
-            if (newObj) {
-                studioObjects.push(newObj);
-                selectedObj = newObj;
-                isDragging = true;
-                startX = mx - newObj.x;
-                startY = my - newObj.y;
-                showProperties();
-                updateExplorer();
-                render();
-            }
-        } else {
-            selectedObj = null;
-            showProperties();
-            updateExplorer();
-            render();
+    const findHit = (list, px=0, py=0) => {
+        for (let i = list.length - 1; i >= 0; i--) {
+            const o = list[i];
+            const ax = o.x + px, ay = o.y + py;
+            if (o.type === 'model' && o.children) {
+                if (findHit(o.children, ax, ay)) return o; // Select Model if child hit
+                if (mx > ax && mx < ax+o.w && my > ay && my < ay+o.h) return o;
+            } else { if (mx > ax && mx < ax+o.w && my > ay && my < ay+o.h) return o; }
         }
+        return null;
+    };
+
+    const hit = findHit(studioObjects);
+    if (hit) {
+        selectedObj = hit; isDragging = true;
+        startX = mx - hit.x; startY = my - hit.y;
+        showProperties(); updateExplorer(); render();
+    } else {
+        const gx = Math.round(mx/10)*10, gy = Math.round(my/10)*10;
+        if (currentTool === 'part') addPart();
+        else if (currentTool === 'model') addModel();
+        else selectedObj = null;
+        showProperties(); updateExplorer(); render();
     }
 }
 
 function handleMouseMove(e) {
-    const mx = e.offsetX - camX;
-    const my = e.offsetY - camY;
-
-    if (currentTool === 'scale' && selectedObj && !isDragging && !isResizing) {
+    const mx = e.offsetX - camX; const my = e.offsetY - camY;
+    if (currentTool === 'scale' && selectedObj && !isDragging) {
         const handles = getScaleHandles(selectedObj);
         let hover = false;
         for (let key in handles) {
             const h = handles[key];
-            if (mx >= h.x && mx <= h.x + h.w && my >= h.y && my <= h.y + h.h) {
-                canvas.style.cursor = h.cursor;
-                hover = true;
-            }
+            if (mx >= h.x && mx <= h.x+h.w && my >= h.y && my <= h.y+h.h) { canvas.style.cursor = h.cursor; hover = true; }
         }
         if (!hover) canvas.style.cursor = isPanning ? 'grabbing' : 'default';
-    } else {
-        canvas.style.cursor = isPanning ? 'grabbing' : 'default';
-    }
+    } else canvas.style.cursor = isPanning ? 'grabbing' : 'default';
 
-    if (isPanning) {
-        camX += e.movementX;
-        camY += e.movementY;
-        render();
-        return;
-    }
-
+    if (isPanning) { camX += e.movementX; camY += e.movementY; render(); return; }
     if (isResizing && selectedObj) {
-        const dx = Math.round((mx - resizeStart.mx) / 10) * 10;
-        const dy = Math.round((my - resizeStart.my) / 10) * 10;
-        const minSize = 10;
-        if (resizeHandle.includes('e')) selectedObj.w = Math.max(minSize, resizeStart.w + dx);
-        if (resizeHandle.includes('w')) {
-            const newW = resizeStart.w - dx;
-            if (newW >= minSize) { selectedObj.x = resizeStart.x + dx; selectedObj.w = newW; }
-        }
-        if (resizeHandle.includes('s')) selectedObj.h = Math.max(minSize, resizeStart.h + dy);
-        if (resizeHandle.includes('n')) {
-            const newH = resizeStart.h - dy;
-            if (newH >= minSize) { selectedObj.y = resizeStart.y + dy; selectedObj.h = newH; }
-        }
-        showProperties();
-        render();
-        return;
+        const dx = Math.round((mx - resizeStart.mx)/10)*10;
+        const dy = Math.round((my - resizeStart.my)/10)*10;
+        if (resizeHandle.includes('e')) selectedObj.w = Math.max(10, resizeStart.w + dx);
+        if (resizeHandle.includes('w')) { const nw = resizeStart.w - dx; if (nw >= 10) { selectedObj.x = resizeStart.x + dx; selectedObj.w = nw; } }
+        if (resizeHandle.includes('s')) selectedObj.h = Math.max(10, resizeStart.h + dy);
+        if (resizeHandle.includes('n')) { const nh = resizeStart.h - dy; if (nh >= 10) { selectedObj.y = resizeStart.y + dy; selectedObj.h = nh; } }
+        showProperties(); render(); return;
     }
-
     if (isDragging && selectedObj) {
-        selectedObj.x = Math.round((mx - startX)/10)*10;
-        selectedObj.y = Math.round((my - startY)/10)*10;
-        showProperties();
-        render();
+        selectedObj.x = Math.round((mx - startX)/10)*10; selectedObj.y = Math.round((my - startY)/10)*10;
+        showProperties(); render();
     }
 }
+function handleMouseUp() { isPanning = false; isDragging = false; isResizing = false; if(canvas) canvas.style.cursor = 'default'; }
 
-function handleMouseUp() {
-    isPanning = false;
-    isDragging = false;
-    isResizing = false;
-    resizeHandle = null;
-    if(canvas) canvas.style.cursor = 'default';
-}
-
-function openTextEditor() {
-    const obj = contextMenuObj || selectedObj;
-    if (!obj) return;
-    if (textInput) textInput.value = obj.text || "";
-    if (fontSelect) fontSelect.value = obj.font || "Arial";
-    updateFontPreview();
-    if (modal) modal.style.display = 'flex';
-    if (contextMenu) contextMenu.style.display = 'none';
-}
-function closeTextModal() { if (modal) modal.style.display = 'none'; }
-function updateFontPreview() {
-    if (fontPreview && fontSelect) {
-        fontPreview.style.fontFamily = fontSelect.value;
-        fontPreview.innerText = (textInput && textInput.value) ? textInput.value : "Preview";
-    }
-}
-function applyText() {
-    const obj = contextMenuObj || selectedObj;
-    if (obj && textInput && fontSelect) {
-        obj.text = textInput.value;
-        obj.font = fontSelect.value;
-    }
-    closeTextModal();
-    render();
-    showProperties();
-}
-
-// UI Library Render
 function renderModelLibrary() {
     if (!modelsLibraryEl) return;
     modelsLibraryEl.innerHTML = '';
     const categories = {};
-    modelsLibrary.forEach(model => {
-        const cat = model.category || 'Misc';
-        if (!categories[cat]) categories[cat] = [];
-        categories[cat].push(model);
-    });
+    modelsLibrary.forEach(model => { const cat = model.category || 'Misc'; if (!categories[cat]) categories[cat] = []; categories[cat].push(model); });
     for (const [catName, models] of Object.entries(categories)) {
         const header = document.createElement('div');
-        header.style.gridColumn = '1 / -1';
-        header.style.color = '#888';
-        header.style.fontSize = '11px';
-        header.style.fontWeight = 'bold';
-        header.style.marginTop = '10px';
-        header.style.marginBottom = '5px';
-        header.style.textTransform = 'uppercase';
+        header.style.cssText = 'grid-column:1/-1; color:#888; font-size:11px; font-weight:bold; margin:10px 0 5px; text-transform:uppercase;';
         header.innerText = catName;
         modelsLibraryEl.appendChild(header);
         models.forEach(model => {
-            const el = document.createElement('div');
-            el.className = 'model-item';
-            el.innerHTML = `<div style="margin-bottom:5px; font-size:20px;">${model.objects[0].text || ICONS.box}</div><div style="font-size:10px;">${model.name}</div>`;
-            el.onclick = () => { selectedModel = model; currentModel = model; addPart(model); renderModelPreview(); };
+            const el = document.createElement('div'); el.className = 'model-item';
+            el.innerHTML = `<div style="font-size:20px;">${model.objects[0].text || ICONS.box}</div><div style="font-size:10px;">${model.name}</div>`;
+            el.onclick = () => { selectedModel = model; addPart(model); };
             modelsLibraryEl.appendChild(el);
         });
     }
 }
-
 function renderModelPreview() {
     if (!modelPreviewCanvas || !modelPreviewCtx) return;
     const w = modelPreviewCanvas.parentElement.clientWidth || 300;
     const h = 150;
     modelPreviewCanvas.width = w;
     modelPreviewCanvas.height = h;
+    
     modelPreviewCtx.clearRect(0,0,w,h);
     modelPreviewCtx.fillStyle = '#1a1a26';
     modelPreviewCtx.fillRect(0,0,w,h);
+
     if (!selectedModel) return;
     const objs = selectedModel.objects;
     if(!objs || !objs.length) return;
+
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    objs.forEach(o => { if(o.x < minX) minX = o.x; if(o.y < minY) minY = o.y; if(o.x+o.w > maxX) maxX = o.x+o.w; if(o.y+o.h > maxY) maxY = o.y+o.h; });
-    const mw = maxX - minX; const mh = maxY - minY;
+    objs.forEach(o => {
+        if(o.x < minX) minX = o.x;
+        if(o.y < minY) minY = o.y;
+        if(o.x+o.w > maxX) maxX = o.x+o.w;
+        if(o.y+o.h > maxY) maxY = o.y+o.h;
+    });
+
+    const mw = maxX - minX;
+    const mh = maxY - minY;
     const scale = Math.min((w-40)/mw, (h-40)/mh);
-    const ox = (w - mw*scale)/2; const oy = (h - mh*scale)/2;
+    const ox = (w - mw*scale)/2;
+    const oy = (h - mh*scale)/2;
+
     modelPreviewCtx.save();
     modelPreviewCtx.translate(ox, oy);
     modelPreviewCtx.scale(scale, scale);
     modelPreviewCtx.translate(-minX, -minY);
-    objs.forEach(obj => { modelPreviewCtx.fillStyle = obj.color; modelPreviewCtx.fillRect(obj.x, obj.y, obj.w, obj.h); });
+
+    objs.forEach(obj => {
+        modelPreviewCtx.fillStyle = obj.color;
+        modelPreviewCtx.fillRect(obj.x, obj.y, obj.w, obj.h);
+    });
     modelPreviewCtx.restore();
-    const pc = document.getElementById('parts-count'); const sv = document.getElementById('size-value');
-    if(pc) pc.innerText = objs.length; if(sv) sv.innerText = `${Math.round(mw)}x${Math.round(mh)}`;
+
+    const pc = document.getElementById('parts-count');
+    const sv = document.getElementById('size-value');
+    if(pc) pc.innerText = objs.length;
+    if(sv) sv.innerText = `${Math.round(mw)}x${Math.round(mh)}`;
 }
 
 document.addEventListener('DOMContentLoaded', initStudio);
